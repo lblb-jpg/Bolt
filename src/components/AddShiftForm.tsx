@@ -156,7 +156,7 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-[#0F1115] border border-white/10 rounded-xl px-2.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all [color-scheme:dark]"
+              className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3 text-base text-white transition-all [color-scheme:dark] focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
               required
               id="input-shift-date"
             />
@@ -176,7 +176,7 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
                 placeholder="Ex. 75.00"
                 value={initialBalance}
                 onChange={(e) => setInitialBalance(e.target.value)}
-                className="w-full bg-[#0F1115] border border-white/10 rounded-xl pl-3 pr-7 py-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
                 required
                 id="input-shift-initial-balance"
               />
@@ -200,7 +200,7 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
                 placeholder="Ex. 220.00"
                 value={finalBalance}
                 onChange={(e) => setFinalBalance(e.target.value)}
-                className="w-full bg-[#0F1115] border border-white/10 rounded-xl pl-3 pr-7 py-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
                 required
                 id="input-shift-final-balance"
               />
@@ -224,7 +224,7 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
                 placeholder="Ex. 15.00"
                 value={expenses}
                 onChange={(e) => setExpenses(e.target.value)}
-                className="w-full bg-[#0F1115] border border-white/10 rounded-xl pl-3 pr-7 py-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
                 id="input-shift-expenses"
               />
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-semibold">
@@ -244,7 +244,7 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
             placeholder="Ex. Conditions fluides, bonus Bolt de la journée..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full bg-[#0F1115] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+            className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3.5 text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
             id="input-shift-notes"
           />
         </div>

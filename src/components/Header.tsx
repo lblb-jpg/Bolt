@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isSyncing, onRefresh }) => {
   return (
-    <header className="border-b border-white/5 bg-[#16191F]/90 backdrop-blur-md sticky top-0 z-50">
+    <header className="border-b border-white/5 bg-[#16191F]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5 min-w-0">
           <Car className="h-5 w-5 shrink-0 text-emerald-400" id="header-logo-icon" />
@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ isSyncing, onRefresh }) => {
           <button
             onClick={onRefresh}
             disabled={isSyncing}
-            className="flex items-center justify-center p-2 rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white transition-colors disabled:opacity-50"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
             title="Actualiser les données"
             id="refresh-data-btn"
           >

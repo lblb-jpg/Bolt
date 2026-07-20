@@ -12,6 +12,15 @@ body {
   font-family: var(--font-sans);
 }
 
+/* iOS Safari zooms focused form controls whose font size is below 16px. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Custom smooth transitions and delicate glows */
 .glow-card {
   position: relative;
@@ -38,4 +47,3 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(0.8) sepia(1) saturate(5) hue-rotate(110deg);
   cursor: pointer;
 }
-

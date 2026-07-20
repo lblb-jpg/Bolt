@@ -101,7 +101,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               placeholder="Chercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0F1115] border border-white/10 rounded-xl pl-8 sm:pl-10 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-gray-500"
+              className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-9 pr-3 text-base text-white transition-all placeholder:text-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:pl-10 sm:text-sm"
               id="search-history-input"
             />
           </div>
@@ -112,7 +112,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               <select
                 value={filterMonth}
                 onChange={(e) => setFilterMonth(e.target.value)}
-                className="w-full bg-[#0F1115] border border-white/10 rounded-xl px-2 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-2.5 text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:px-3.5 sm:text-sm"
                 id="select-filter-month"
               >
                 <option value="all">Tous</option>
