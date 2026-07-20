@@ -1,0 +1,26 @@
+{
+  "name": "MyShift Tracker",
+  "short_name": "MyShift",
+  "description": "Suivez simplement vos journées, gains et frais Bolt.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0F1115",
+  "theme_color": "#0F1115",
+  "icons": [
+    {
+      "src": "/icons/myshift-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/myshift-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

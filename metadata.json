@@ -1,0 +1,6 @@
+{
+  "name": "Bolt Earnings Tracker",
+  "description": "Suivi personnel de gains journaliers isolés pour chauffeur Bolt partageant un compte.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
