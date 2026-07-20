@@ -4,8 +4,10 @@ import { AddShiftForm } from "./components/AddShiftForm";
 import { HistoryList } from "./components/HistoryList";
 import { DashboardStats } from "./components/DashboardStats";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { OverallPerformance } from "./components/OverallPerformance";
 import { dbService } from "./dbService";
 import { ShiftEntry } from "./types";
+import { WeeklyAccountSettlement } from "./components/WeeklyAccountSettlement";
 
 export default function App() {
   const [entries, setEntries] = useState<ShiftEntry[]>([]);
@@ -132,6 +134,10 @@ export default function App() {
           <DashboardStats stats={monthlyStats.stats} monthLabel={monthlyStats.label} />
         </section>
 
+        <section aria-labelledby="overall-performance-title">
+          <OverallPerformance entries={entries} />
+        </section>
+
         {/* Simple Add Form */}
         <section id="add-shift-form-section">
           <AddShiftForm
@@ -156,6 +162,8 @@ export default function App() {
             onDelete={handleDeleteEntry}
           />
         </section>
+
+        <WeeklyAccountSettlement entries={entries} />
       </main>
 
       {/* Compact Footer */}

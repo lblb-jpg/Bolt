@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Save, X, Calendar, Euro, AlertCircle } from "lucide-react";
+import { PlusCircle, Save, X, Calendar, Euro, AlertCircle, Target, CheckCircle2 } from "lucide-react";
 import { ShiftEntry } from "../types";
+
+const DAILY_EARNINGS_TARGET = 200;
 
 interface AddShiftFormProps {
   onSave: (entry: Omit<ShiftEntry, "id" | "createdAt">) => void;
@@ -59,6 +61,10 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
 
   const calculatedGross = Math.max(0, finBalNum - initBalNum);
   const calculatedNet = Math.max(0, calculatedGross - expNum);
+  const targetFinalBalance = initBalNum + DAILY_EARNINGS_TARGET;
+  const remainingToTarget = Math.max(0, DAILY_EARNINGS_TARGET - calculatedGross);
+  const targetProgress = Math.min(100, (calculatedGross / DAILY_EARNINGS_TARGET) * 100);
+  const targetReached = finalBalance !== "" && calculatedGross >= DAILY_EARNINGS_TARGET;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,6 +239,48 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({
             </div>
           </div>
         </div>
+
+        {initialBalance !== "" && (
+          <div
+            className={`rounded-xl border px-3.5 py-3 transition-colors ${
+              targetReached
+                ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+                : "border-violet-500/15 bg-violet-500/[0.05]"
+            }`}
+            id="daily-target-card"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className={`rounded-lg p-1.5 ${targetReached ? "bg-emerald-500/10 text-emerald-400" : "bg-violet-500/10 text-violet-400"}`}>
+                  {targetReached ? <CheckCircle2 className="h-4 w-4" /> : <Target className="h-4 w-4" />}
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                    Objectif du jour : +{DAILY_EARNINGS_TARGET} €
+                  </span>
+                  <p className="mt-0.5 truncate text-[11px] text-zinc-400">
+                    {targetReached
+                      ? "Objectif atteint"
+                      : finalBalance !== ""
+                        ? `Encore ${formatCurrency(remainingToTarget)} à réaliser`
+                        : "Solde final à atteindre"}
+                  </p>
+                </div>
+              </div>
+              <strong className={`shrink-0 font-mono text-base font-bold ${targetReached ? "text-emerald-400" : "text-violet-300"}`}>
+                {formatCurrency(targetFinalBalance)}
+              </strong>
+            </div>
+
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
+              <div
+                className={`h-full rounded-full transition-[width] duration-300 ${targetReached ? "bg-emerald-400" : "bg-violet-400"}`}
+                style={{ width: `${targetProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Notes */}
         <div className="space-y-1.5">

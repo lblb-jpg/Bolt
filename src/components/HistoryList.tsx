@@ -86,7 +86,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const uniqueMonths = getMonthsInEntries();
 
   // Selected period totals
-  const periodTotalNet = filteredEntries.reduce((sum, e) => sum + e.netEarnings, 0);
+  const periodTotalNet = filteredEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
 
   return (
     <div className="space-y-4">

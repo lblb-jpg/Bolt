@@ -12,6 +12,19 @@ body {
   font-family: var(--font-sans);
 }
 
+html,
+body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* iOS Safari zooms focused form controls whose font size is below 16px. */
 @media (max-width: 767px) {
   input,
