@@ -1,4 +1,4 @@
-const CACHE_NAME = 'myshift-v1';
+const CACHE_NAME = 'myshift-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -39,5 +39,16 @@ self.addEventListener('fetch', (event) => {
         if (event.request.mode === 'navigate') return caches.match('/index.html');
         return Response.error();
       }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      const existingClient = windowClients.find((client) => new URL(client.url).origin === self.location.origin);
+      if (existingClient) return existingClient.focus();
+      return clients.openWindow('/');
+    }),
   );
 });

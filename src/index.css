@@ -6,23 +6,47 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-body {
-  background-color: #0F1115;
-  color: #E5E7EB;
-  font-family: var(--font-sans);
+html,
+body,
+#root {
+  height: 100%;
 }
 
 html,
 body {
+  background-color: #0F1115;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: #E5E7EB;
+  font-family: var(--font-sans);
+}
+
+#root {
+  -webkit-overflow-scrolling: touch;
   -ms-overflow-style: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: none;
   scrollbar-width: none;
 }
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+*,
+*::before,
+*::after {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.app-footer {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
 
 /* iOS Safari zooms focused form controls whose font size is below 16px. */
@@ -56,7 +80,9 @@ body::-webkit-scrollbar {
 
 /* Custom styling for input date calendar and select drop-down triggers */
 input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.8) sepia(1) saturate(5) hue-rotate(110deg);
+  filter: invert(74%) sepia(78%) saturate(1095%) hue-rotate(112deg) brightness(96%) contrast(101%);
   cursor: pointer;
+  opacity: 1;
 }

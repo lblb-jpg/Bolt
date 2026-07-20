@@ -36,8 +36,11 @@ const getLocalDateKey = (date: Date) => [
 
 export interface WeeklySettlement {
   weekStart: string;
+  weekEnd: string;
   nextMonday: string;
-  totalBeforeFee: number;
+  totalGross: number;
+  totalExpenses: number;
+  totalNetBeforeFee: number;
   fee: number;
   totalAfterFee: number;
   daysWorked: number;
@@ -59,13 +62,18 @@ export const getCompletedWeeklySettlements = (
   return [...weeks.entries()]
     .map(([weekStart, weekEntries]) => {
       const nextMonday = addDays(weekStart, 7);
-      const totalBeforeFee = weekEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
+      const totalGross = weekEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0);
+      const totalExpenses = weekEntries.reduce((sum, entry) => sum + entry.expenses, 0);
+      const totalNetBeforeFee = weekEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
       return {
         weekStart,
+        weekEnd: addDays(weekStart, 6),
         nextMonday,
-        totalBeforeFee,
+        totalGross,
+        totalExpenses,
+        totalNetBeforeFee,
         fee: WEEKLY_ACCOUNT_FEE,
-        totalAfterFee: totalBeforeFee - WEEKLY_ACCOUNT_FEE,
+        totalAfterFee: totalNetBeforeFee - WEEKLY_ACCOUNT_FEE,
         daysWorked: weekEntries.length,
       };
     })

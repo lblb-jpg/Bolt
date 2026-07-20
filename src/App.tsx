@@ -8,11 +8,16 @@ import { OverallPerformance } from "./components/OverallPerformance";
 import { dbService } from "./dbService";
 import { ShiftEntry } from "./types";
 import { WeeklyAccountSettlement } from "./components/WeeklyAccountSettlement";
+import { NotificationSettings } from "./components/NotificationSettings";
+import { NotificationScheduler } from "./components/NotificationScheduler";
 
 export default function App() {
   const [entries, setEntries] = useState<ShiftEntry[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [editingEntry, setEditingEntry] = useState<ShiftEntry | null>(null);
+  const [currentView, setCurrentView] = useState<"dashboard" | "notifications">(() =>
+    window.location.hash === "#notifications" ? "notifications" : "dashboard",
+  );
   const [pendingAction, setPendingAction] = useState<
     | { type: "delete"; entry: ShiftEntry }
     | { type: "edit"; entry: ShiftEntry; updates: Omit<ShiftEntry, "id" | "createdAt"> }
@@ -58,6 +63,14 @@ export default function App() {
 
   useEffect(() => {
     fetchEntries();
+  }, []);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentView(window.location.hash === "#notifications" ? "notifications" : "dashboard");
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   // Save or edit entry
@@ -125,10 +138,23 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F1115] text-zinc-100 selection:bg-emerald-500 selection:text-zinc-950 flex flex-col font-sans">
+    <div className="flex min-h-full flex-col bg-[#0F1115] font-sans text-zinc-100 selection:bg-emerald-500 selection:text-zinc-950">
       {/* Minimal Header */}
-      <Header isSyncing={isSyncing} onRefresh={fetchEntries} />
+      <Header
+        isSyncing={isSyncing}
+        onRefresh={fetchEntries}
+        onOpenNotifications={() => { window.location.hash = "notifications"; }}
+        notificationsOpen={currentView === "notifications"}
+      />
 
+      <NotificationScheduler entries={entries} />
+
+      {currentView === "notifications" ? (
+        <NotificationSettings onBack={() => {
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          setCurrentView("dashboard");
+        }} />
+      ) : (
       <main className="flex-1 max-w-4xl w-full mx-auto px-3.5 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
         <section aria-labelledby="monthly-summary-title">
           <DashboardStats stats={monthlyStats.stats} monthLabel={monthlyStats.label} />
@@ -165,9 +191,10 @@ export default function App() {
 
         <WeeklyAccountSettlement entries={entries} />
       </main>
+      )}
 
       {/* Compact Footer */}
-      <footer className="border-t border-white/5 bg-[#0F1115] text-zinc-600 text-[11px] py-6 mt-12">
+      <footer className="app-footer mt-12 border-t border-white/5 bg-[#0F1115] py-6 text-[11px] text-zinc-600">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p>© {new Date().getFullYear()} MyShift. Compte partagé Bolt sécurisé dans la base de données Cloud.</p>
         </div>

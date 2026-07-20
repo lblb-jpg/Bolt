@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Edit2, Trash2, Calendar, PiggyBank, Search, MessageSquare, AlertCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Edit2, Trash2, Calendar, PiggyBank, Search, MessageSquare, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { ShiftEntry } from "../types";
 
 interface HistoryListProps {
@@ -13,8 +13,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const [filterMonth, setFilterMonth] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("" );
+  const today = new Date();
+  const todayKey = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
+  const [periodFilter, setPeriodFilter] = useState<"month" | "week" | "day" | "today">("month");
+  const [selectedMonth, setSelectedMonth] = useState(todayKey.slice(0, 7));
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const resultsPerPage = 4;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("fr-FR", {
@@ -39,39 +45,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     }
   };
 
-  // Get list of unique months in data for filtering dropdown
-  const getMonthsInEntries = () => {
-    const months = new Set<string>();
-    entries.forEach((e) => {
-      try {
-        const parts = e.date.split("-");
-        if (parts.length >= 2) {
-          months.add(`${parts[0]}-${parts[1]}`); // YYYY-MM
-        }
-      } catch {}
-    });
-    return Array.from(months).sort((a, b) => b.localeCompare(a));
-  };
-
-  const formatMonthLabel = (yearMonth: string) => {
-    try {
-      const [year, month] = yearMonth.split("-").map(Number);
-      const date = new Date(year, month - 1, 1);
-      const label = date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-      return label.charAt(0).toUpperCase() + label.slice(1);
-    } catch {
-      return yearMonth;
-    }
+  const getWeekStart = (dateKey: string) => {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    const daysSinceMonday = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - daysSinceMonday);
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
   };
 
   // Filter entries
   const filteredEntries = entries.filter((entry) => {
-    // Month filter
-    if (filterMonth !== "all") {
-      if (!entry.date.startsWith(filterMonth)) {
-        return false;
-      }
-    }
+    if (periodFilter === "month" && !entry.date.startsWith(selectedMonth)) return false;
+    if (periodFilter === "week" && getWeekStart(entry.date) !== getWeekStart(selectedDate)) return false;
+    if (periodFilter === "day" && entry.date !== selectedDate) return false;
+    if (periodFilter === "today" && entry.date !== todayKey) return false;
     // Search query
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
@@ -83,7 +70,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     return true;
   });
 
-  const uniqueMonths = getMonthsInEntries();
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / resultsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedEntries = filteredEntries.slice(
+    (safeCurrentPage - 1) * resultsPerPage,
+    safeCurrentPage * resultsPerPage,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [periodFilter, selectedMonth, selectedDate, searchQuery]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   // Selected period totals
   const periodTotalNet = filteredEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
@@ -91,8 +91,27 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   return (
     <div className="space-y-4">
       {/* Search & Filter Toolbar */}
-      {entries.length > 0 && <div className="bg-[#16191F] border border-white/5 rounded-xl p-2.5 sm:p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3">
-        <div className="flex-1 flex flex-row items-center gap-2">
+      {entries.length > 0 && <div className="space-y-2.5 rounded-xl border border-white/5 bg-[#16191F] p-2.5 sm:p-3">
+        <div className="grid grid-cols-4 gap-1 rounded-xl bg-[#0F1115] p-1">
+          {([
+            ["month", "Mois"],
+            ["week", "Semaine"],
+            ["day", "Jour"],
+            ["today", "Aujourd’hui"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPeriodFilter(value)}
+              aria-pressed={periodFilter === value}
+              className={`min-h-9 rounded-lg px-1 text-[10px] font-semibold transition sm:text-xs ${periodFilter === value ? "bg-emerald-500 text-emerald-950 shadow-sm" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-row items-center gap-2">
           {/* Search bar */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
@@ -106,29 +125,19 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             />
           </div>
 
-          {/* Month selector */}
-          {uniqueMonths.length > 0 && (
-            <div className="w-[110px] sm:w-56 shrink-0">
-              <select
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-2.5 text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:px-3.5 sm:text-sm"
-                id="select-filter-month"
-              >
-                <option value="all">Tous</option>
-                {uniqueMonths.map((m) => (
-                  <option key={m} value={m}>
-                    {formatMonthLabel(m)}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {periodFilter !== "today" && (
+            <input
+              type={periodFilter === "month" ? "month" : "date"}
+              value={periodFilter === "month" ? selectedMonth : selectedDate}
+              onChange={(event) => periodFilter === "month" ? setSelectedMonth(event.target.value) : setSelectedDate(event.target.value)}
+              aria-label={periodFilter === "month" ? "Choisir le mois" : periodFilter === "week" ? "Choisir la semaine" : "Choisir le jour"}
+              className="min-h-12 w-[142px] shrink-0 rounded-xl border border-white/10 bg-[#0F1115] px-2 text-base text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 sm:w-48 sm:text-sm"
+            />
           )}
         </div>
 
         {/* Live filtered summary */}
-        {filteredEntries.length > 0 && (
-          <div className="flex items-center justify-between md:justify-start gap-3 bg-[#0F1115] border border-white/5 px-3.5 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs text-gray-400">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#0F1115] px-3.5 py-2 text-[11px] text-gray-400 sm:py-2.5 sm:text-xs">
             <span>
               Total : <strong className="text-white">{filteredEntries.length} jour(s)</strong>
             </span>
@@ -136,8 +145,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             <span>
               Net : <strong className="text-emerald-400 font-mono font-bold">{formatCurrency(periodTotalNet)}</strong>
             </span>
-          </div>
-        )}
+        </div>
       </div>}
 
       {/* History table / cards */}
@@ -173,7 +181,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredEntries.map((entry) => (
+                {paginatedEntries.map((entry) => (
                   <tr key={entry.id} className="hover:bg-white/5 transition-colors group">
                     {/* Date */}
                     <td className="px-5 py-4">
@@ -253,7 +261,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
-            {filteredEntries.map((entry) => (
+            {paginatedEntries.map((entry) => (
               <div
                 key={entry.id}
                 className="bg-[#16191F] border border-white/5 rounded-2xl p-4 space-y-3.5 hover:border-white/10 transition-all shadow-md"
@@ -327,6 +335,32 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               </div>
             ))}
           </div>
+
+          {filteredEntries.length > 0 && (
+            <nav className="flex items-center justify-center gap-3 pt-1" aria-label="Pagination de l’historique">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={safeCurrentPage === 1}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.07] bg-[#16191F] text-zinc-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-25"
+                aria-label="Page précédente"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-16 text-center text-[11px] font-medium text-zinc-500">
+                {safeCurrentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.07] bg-[#16191F] text-zinc-300 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-25"
+                aria-label="Page suivante"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </nav>
+          )}
         </div>
       )}
     </div>

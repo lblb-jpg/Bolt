@@ -5,11 +5,13 @@ import { supabaseConfigured } from "../supabase";
 interface HeaderProps {
   isSyncing: boolean;
   onRefresh: () => void;
+  onOpenNotifications: () => void;
+  notificationsOpen: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isSyncing, onRefresh }) => {
+export const Header: React.FC<HeaderProps> = ({ isSyncing, onRefresh, onOpenNotifications, notificationsOpen }) => {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#0F1115]/90 pt-[env(safe-area-inset-top)] shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl supports-[backdrop-filter]:bg-[#0F1115]/80">
+    <header className="sticky top-0 z-50 isolate border-b border-white/[0.06] bg-[#0F1115] pt-[env(safe-area-inset-top)] shadow-[0_10px_30px_rgba(0,0,0,0.28)]">
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-3.5 sm:h-[68px] sm:px-6">
         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-500/15 bg-emerald-500/[0.07] shadow-[0_0_18px_rgba(16,185,129,0.08)]">
@@ -37,6 +39,16 @@ export const Header: React.FC<HeaderProps> = ({ isSyncing, onRefresh }) => {
             <span className={`h-1.5 w-1.5 rounded-full shadow-[0_0_8px_currentColor] ${supabaseConfigured ? "bg-emerald-400" : "bg-amber-400"}`} />
             <span>{supabaseConfigured ? "En ligne" : "Local"}</span>
           </div>
+
+          <button
+            onClick={onOpenNotifications}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl border text-base transition-all active:scale-95 ${notificationsOpen ? "border-sky-500/20 bg-sky-500/10" : "border-white/[0.06] bg-white/[0.025] hover:border-white/10 hover:bg-white/5"}`}
+            title="Notifications"
+            aria-label="Ouvrir les notifications"
+            aria-current={notificationsOpen ? "page" : undefined}
+          >
+            <span aria-hidden="true">🔔</span>
+          </button>
 
           <button
             onClick={onRefresh}
