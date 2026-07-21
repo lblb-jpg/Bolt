@@ -84,6 +84,9 @@ export const WeeklyAccountSettlement = ({ entries }: WeeklyAccountSettlementProp
                         <WalletCards className="h-3 w-3 text-emerald-500" /> Gains bruts
                       </div>
                       <strong className="mt-1 block font-mono text-xs text-zinc-300">{formatCurrency(week.totalGross)}</strong>
+                      {week.totalCash > 0 && (
+                        <span className="mt-0.5 block text-[8px] text-sky-400">dont {formatCurrency(week.totalCash)} après -24 %</span>
+                      )}
                     </div>
                     <div className="rounded-lg bg-white/[0.025] p-2.5">
                       <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-zinc-600">

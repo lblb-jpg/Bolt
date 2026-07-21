@@ -86,7 +86,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   }, [currentPage, totalPages]);
 
   // Selected period totals
-  const periodTotalNet = filteredEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
+  const periodTotalGross = filteredEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0);
 
   return (
     <div className="space-y-4">
@@ -143,7 +143,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             </span>
             <div className="h-3 w-[1px] bg-white/5" />
             <span>
-              Net : <strong className="text-emerald-400 font-mono font-bold">{formatCurrency(periodTotalNet)}</strong>
+              Gains bruts : <strong className="text-emerald-400 font-mono font-bold">{formatCurrency(periodTotalGross)}</strong>
             </span>
         </div>
       </div>}
@@ -174,14 +174,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   <th className="px-5 py-4">Solde Début</th>
                   <th className="px-5 py-4">Solde Fin</th>
                   <th className="px-5 py-4 text-amber-400">Gain Brut</th>
+                  <th className="px-5 py-4 text-sky-400">Espèces</th>
                   <th className="px-5 py-4 text-rose-400">Frais</th>
-                  <th className="px-5 py-4 text-emerald-400">Bénéfice Net</th>
+                  <th className="px-5 py-4 text-emerald-400">Gains affichés</th>
                   <th className="px-5 py-4">Notes</th>
                   <th className="px-5 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {paginatedEntries.map((entry) => (
+                {paginatedEntries.map((entry) => {
+                  const cashGross = entry.cashRides?.reduce((sum, amount) => sum + amount, 0)
+                    || (entry.cashEarnings > 0 ? entry.cashEarnings / 0.76 : 0);
+                  const cashDeduction = Math.max(0, cashGross - entry.cashEarnings);
+
+                  return (
                   <tr key={entry.id} className="hover:bg-white/5 transition-colors group">
                     {/* Date */}
                     <td className="px-5 py-4">
@@ -208,16 +214,28 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       </div>
                     </td>
 
+                    {/* Espèces après commission */}
+                    <td className="px-5 py-4 text-sm">
+                      <span className="block font-mono text-sky-400">
+                        {entry.cashEarnings > 0 ? `+${formatCurrency(entry.cashEarnings)}` : "—"}
+                      </span>
+                      {cashGross > 0 && (
+                        <span className="mt-0.5 block text-[9px] text-zinc-600">
+                          brut {formatCurrency(cashGross)} · -{formatCurrency(cashDeduction)}
+                        </span>
+                      )}
+                    </td>
+
                     {/* Frais */}
                     <td className="px-5 py-4 font-mono text-sm text-rose-400">
                       {entry.expenses > 0 ? `-${formatCurrency(entry.expenses)}` : "—"}
                     </td>
 
-                    {/* Bénéfice Net */}
+                    {/* Displayed earnings: fuel stays informational in history */}
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/5 text-emerald-400 border border-emerald-500/10 font-mono">
                         <PiggyBank className="h-3.5 w-3.5" />
-                        {formatCurrency(entry.netEarnings)}
+                        {formatCurrency(entry.grossEarnings)}
                       </span>
                     </td>
 
@@ -254,14 +272,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
-            {paginatedEntries.map((entry) => (
+            {paginatedEntries.map((entry) => {
+              const cashGross = entry.cashRides?.reduce((sum, amount) => sum + amount, 0)
+                || (entry.cashEarnings > 0 ? entry.cashEarnings / 0.76 : 0);
+              const cashDeduction = Math.max(0, cashGross - entry.cashEarnings);
+
+              return (
               <div
                 key={entry.id}
                 className="bg-[#16191F] border border-white/5 rounded-2xl p-4 space-y-3.5 hover:border-white/10 transition-all shadow-md"
@@ -274,7 +298,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   </span>
                   
                   <span className="text-sm font-bold font-mono text-emerald-400 bg-emerald-500/5 px-2.5 py-1 rounded-lg border border-emerald-500/10 flex items-center gap-1">
-                    {formatCurrency(entry.netEarnings)}
+                    {formatCurrency(entry.grossEarnings)}
                   </span>
                 </div>
 
@@ -291,6 +315,17 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   <div className="space-y-0.5 border-t border-white/5 pt-2">
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Gain Brut</span>
                     <span className="text-xs font-mono text-amber-400 font-bold">+{formatCurrency(entry.grossEarnings)}</span>
+                  </div>
+                  <div className="space-y-0.5 border-t border-white/5 pt-2">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Espèces après -24 %</span>
+                    <span className="text-xs font-mono text-sky-400 font-semibold">
+                      {entry.cashEarnings > 0 ? `+${formatCurrency(entry.cashEarnings)}` : "0,00 €"}
+                    </span>
+                    {cashGross > 0 && (
+                      <span className="mt-0.5 block text-[9px] text-zinc-600">
+                        Brut {formatCurrency(cashGross)} · -{formatCurrency(cashDeduction)}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-0.5 border-t border-white/5 pt-2">
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Frais / Carbu</span>
@@ -333,7 +368,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {filteredEntries.length > 0 && (

@@ -10,8 +10,11 @@ import { ShiftEntry } from "./types";
 import { WeeklyAccountSettlement } from "./components/WeeklyAccountSettlement";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { NotificationScheduler } from "./components/NotificationScheduler";
+import { LoginScreen } from "./components/LoginScreen";
+import { profileSession, UserProfile } from "./profileSession";
 
 export default function App() {
+  const [activeProfile, setActiveProfile] = useState<UserProfile | null>(() => profileSession.getActiveProfile());
   const [entries, setEntries] = useState<ShiftEntry[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [editingEntry, setEditingEntry] = useState<ShiftEntry | null>(null);
@@ -39,6 +42,7 @@ export default function App() {
       label: now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }),
       stats: {
         totalGross: monthEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0),
+        totalCash: monthEntries.reduce((sum, entry) => sum + entry.cashEarnings, 0),
         totalNet,
         totalExpenses,
         daysCount: monthEntries.length,
@@ -50,9 +54,10 @@ export default function App() {
 
   // Load entries on mount
   const fetchEntries = async () => {
+    if (!activeProfile) return;
     setIsSyncing(true);
     try {
-      const data = await dbService.getEntries();
+      const data = await dbService.getEntries(activeProfile.id);
       setEntries(data);
     } catch (error) {
       console.error("Error fetching entries:", error);
@@ -62,8 +67,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchEntries();
-  }, []);
+    if (activeProfile) fetchEntries();
+    else setEntries([]);
+  }, [activeProfile]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -75,6 +81,7 @@ export default function App() {
 
   // Save or edit entry
   const handleSaveEntry = async (entryData: Omit<ShiftEntry, "id" | "createdAt">) => {
+    if (!activeProfile) return;
     if (editingEntry) {
       setPendingAction({ type: "edit", entry: editingEntry, updates: entryData });
       return;
@@ -82,7 +89,7 @@ export default function App() {
 
     setIsSyncing(true);
     try {
-      await dbService.addEntry({
+      await dbService.addEntry(activeProfile.id, {
         ...entryData,
         createdAt: Date.now(),
       });
@@ -101,15 +108,15 @@ export default function App() {
   };
 
   const handleConfirmAction = async () => {
-    if (!pendingAction) return;
+    if (!pendingAction || !activeProfile) return;
 
     setIsSyncing(true);
     try {
       if (pendingAction.type === "delete") {
-        await dbService.deleteEntry(pendingAction.entry.id);
+        await dbService.deleteEntry(activeProfile.id, pendingAction.entry.id);
         if (editingEntry?.id === pendingAction.entry.id) setEditingEntry(null);
       } else {
-        await dbService.updateEntry(pendingAction.entry.id, pendingAction.updates);
+        await dbService.updateEntry(activeProfile.id, pendingAction.entry.id, pendingAction.updates);
         setEditingEntry(null);
       }
 
@@ -137,6 +144,18 @@ export default function App() {
     setEditingEntry(null);
   };
 
+  const handleLogout = () => {
+    profileSession.logout();
+    setEditingEntry(null);
+    setPendingAction(null);
+    setEntries([]);
+    setActiveProfile(null);
+  };
+
+  if (!activeProfile) {
+    return <LoginScreen onLogin={setActiveProfile} />;
+  }
+
   return (
     <div className="flex min-h-full flex-col bg-[#0F1115] font-sans text-zinc-100 selection:bg-emerald-500 selection:text-zinc-950">
       {/* Minimal Header */}
@@ -145,6 +164,8 @@ export default function App() {
         onRefresh={fetchEntries}
         onOpenNotifications={() => { window.location.hash = "notifications"; }}
         notificationsOpen={currentView === "notifications"}
+        profileName={activeProfile.name}
+        onLogout={handleLogout}
       />
 
       <NotificationScheduler entries={entries} />
@@ -196,7 +217,7 @@ export default function App() {
       {/* Compact Footer */}
       <footer className="app-footer mt-12 border-t border-white/5 bg-[#0F1115] py-6 text-[11px] text-zinc-600">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p>© {new Date().getFullYear()} MyShift. Compte partagé Bolt sécurisé dans la base de données Cloud.</p>
+          <p>© {new Date().getFullYear()} MyShift · Espace {activeProfile.name}</p>
         </div>
       </footer>
 

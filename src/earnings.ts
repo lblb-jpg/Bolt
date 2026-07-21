@@ -39,6 +39,7 @@ export interface WeeklySettlement {
   weekEnd: string;
   nextMonday: string;
   totalGross: number;
+  totalCash: number;
   totalExpenses: number;
   totalNetBeforeFee: number;
   fee: number;
@@ -63,6 +64,7 @@ export const getCompletedWeeklySettlements = (
     .map(([weekStart, weekEntries]) => {
       const nextMonday = addDays(weekStart, 7);
       const totalGross = weekEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0);
+      const totalCash = weekEntries.reduce((sum, entry) => sum + entry.cashEarnings, 0);
       const totalExpenses = weekEntries.reduce((sum, entry) => sum + entry.expenses, 0);
       const totalNetBeforeFee = weekEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
       return {
@@ -70,6 +72,7 @@ export const getCompletedWeeklySettlements = (
         weekEnd: addDays(weekStart, 6),
         nextMonday,
         totalGross,
+        totalCash,
         totalExpenses,
         totalNetBeforeFee,
         fee: WEEKLY_ACCOUNT_FEE,

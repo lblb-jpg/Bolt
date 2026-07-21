@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TrendingUp, Fuel, CalendarDays, Trophy, WalletCards, ChevronDown } from "lucide-react";
+import { TrendingUp, Fuel, CalendarDays, Trophy, WalletCards, ChevronDown, Banknote } from "lucide-react";
 import { EarningsStats } from "../types";
 
 interface DashboardStatsProps {
@@ -23,6 +23,18 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
   };
 
   const secondaryStats = [
+    {
+      title: "Gains bruts",
+      value: formatCurrency(stats.totalGross),
+      icon: WalletCards,
+      color: "text-amber-400",
+    },
+    {
+      title: "Espèces après -24 %",
+      value: formatCurrency(stats.totalCash),
+      icon: Banknote,
+      color: "text-sky-400",
+    },
     {
       title: "Frais totaux",
       value: formatCurrency(stats.totalExpenses),
@@ -95,7 +107,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
         }`}
       >
         <div className="overflow-hidden">
-          <div className="grid grid-cols-2 gap-2.5 border-t border-white/5 p-3.5 sm:p-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 border-t border-white/5 p-3.5 sm:p-4 lg:grid-cols-3">
             {secondaryStats.map((card) => {
               const Icon = card.icon;
               return (
