@@ -186,7 +186,7 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({ onSave, editingEntry
           </div>
         </div>
 
-        <div className="glass-inset rounded-[20px] p-3 sm:p-3.5">
+        <div className="glass-inset overflow-hidden rounded-[20px] p-3 sm:p-3.5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-[13px] font-bold text-white sm:text-sm">Courses de la journée</h3>
@@ -199,26 +199,26 @@ export const AddShiftForm: React.FC<AddShiftFormProps> = ({ onSave, editingEntry
             )}
           </div>
 
-          <div className="mt-2.5 space-y-1.5">
+          <div className="mt-3 space-y-2">
             {rides.map((ride, index) => (
               <div
                 key={index}
-                className={`group grid items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-1.5 transition-colors focus-within:border-emerald-500/40 sm:gap-2 sm:p-2 ${
+                className={`group grid min-w-0 grid-cols-1 items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-2 shadow-[0_2px_10px_rgba(20,48,34,0.04)] transition-colors focus-within:border-emerald-500/40 min-[420px]:gap-1.5 sm:gap-2 ${
                   rides.length > 1
-                    ? "grid-cols-[minmax(0,1fr)_146px_34px] sm:grid-cols-[minmax(0,1fr)_210px_40px]"
-                    : "grid-cols-[minmax(0,1fr)_146px] sm:grid-cols-[minmax(0,1fr)_210px]"
+                    ? "grid-cols-[minmax(0,1fr)_34px] min-[420px]:grid-cols-[minmax(0,1fr)_minmax(126px,0.9fr)_34px] sm:grid-cols-[minmax(0,1fr)_210px_40px]"
+                    : "min-[420px]:grid-cols-[minmax(0,1fr)_minmax(126px,0.9fr)] sm:grid-cols-[minmax(0,1fr)_210px]"
                 }`}
               >
-                <div className="relative">
+                <div className={`relative min-w-0 ${rides.length > 1 ? "col-span-2 min-[420px]:col-span-1" : ""}`}>
                   <span className="pointer-events-none absolute left-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.07] bg-white/[0.04] font-mono text-[8px] font-bold text-zinc-500">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <input aria-label={`Montant de la course ${index + 1}`} type="text" inputMode="decimal" enterKeyHint="next" pattern="[0-9]*[.,]?[0-9]*" value={ride.amount} onChange={(event) => updateRide(index, { amount: event.target.value })} placeholder={ride.amount === "" && index === rides.length - 1 && validRides.length > 0 ? "Suivante..." : "Montant"} className="ride-amount-input min-h-10 w-full rounded-lg border border-white/[0.08] bg-white/[0.025] pl-9 pr-7 font-mono !text-[15px] font-semibold text-white outline-none placeholder:font-sans placeholder:text-[11px] placeholder:font-medium placeholder:text-zinc-600 focus:border-emerald-400/40 focus:bg-emerald-400/[0.025] focus:ring-2 focus:ring-emerald-400/[0.06] sm:min-h-11 sm:pl-10 sm:pr-8 sm:!text-sm" />
+                  <input aria-label={`Montant de la course ${index + 1}`} type="text" inputMode="decimal" enterKeyHint="next" pattern="[0-9]*[.,]?[0-9]*" value={ride.amount} onChange={(event) => updateRide(index, { amount: event.target.value })} placeholder={ride.amount === "" && index === rides.length - 1 && validRides.length > 0 ? "Suivante..." : "Montant"} className="ride-amount-input min-h-10 min-w-0 w-full rounded-lg border border-white/[0.08] bg-white/[0.025] pl-9 pr-7 font-mono font-semibold text-white outline-none placeholder:font-sans placeholder:text-[11px] placeholder:font-medium placeholder:text-zinc-600 focus:border-emerald-400/40 focus:bg-emerald-400/[0.025] focus:ring-2 focus:ring-emerald-400/[0.06] sm:min-h-11 sm:pl-10 sm:pr-8" />
                   <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-600">€</span>
                 </div>
-                <div className="grid grid-cols-2 rounded-lg border border-white/[0.08] bg-black/20 p-0.5 sm:p-1">
-                  <button type="button" aria-pressed={ride.paymentMethod === "card"} onClick={() => updateRide(index, { paymentMethod: "card" })} className={`flex min-h-8 items-center justify-center gap-1 rounded-md text-[8px] font-bold transition-all sm:min-h-9 sm:gap-1.5 sm:text-[9px] ${ride.paymentMethod === "card" ? "bg-emerald-500 text-white" : "text-zinc-600 hover:text-zinc-900"}`}><CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />Carte</button>
-                  <button type="button" aria-pressed={ride.paymentMethod === "cash"} onClick={() => updateRide(index, { paymentMethod: "cash" })} className={`flex min-h-8 items-center justify-center gap-1 rounded-md text-[8px] font-bold transition-all sm:min-h-9 sm:gap-1.5 sm:text-[9px] ${ride.paymentMethod === "cash" ? "bg-emerald-700 text-white" : "text-zinc-600 hover:text-zinc-900"}`}><Banknote className="h-3 w-3 sm:h-3.5 sm:w-3.5" />Espèces</button>
+                <div className="grid min-w-0 grid-cols-2 rounded-xl border border-zinc-200 bg-zinc-100 p-1">
+                  <button type="button" aria-pressed={ride.paymentMethod === "card"} onClick={() => updateRide(index, { paymentMethod: "card" })} className={`flex min-h-8 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-[9px] font-bold transition-all sm:min-h-9 sm:gap-1.5 ${ride.paymentMethod === "card" ? "bg-emerald-500 text-white shadow-sm" : "text-zinc-600 hover:text-zinc-900"}`}><CreditCard className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" /><span className="truncate">Carte</span></button>
+                  <button type="button" aria-pressed={ride.paymentMethod === "cash"} onClick={() => updateRide(index, { paymentMethod: "cash" })} className={`flex min-h-8 min-w-0 items-center justify-center gap-1 rounded-lg px-1 text-[9px] font-bold transition-all sm:min-h-9 sm:gap-1.5 ${ride.paymentMethod === "cash" ? "bg-emerald-700 text-white shadow-sm" : "text-zinc-600 hover:text-zinc-900"}`}><Banknote className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" /><span className="truncate">Espèces</span></button>
                 </div>
                 {rides.length > 1 && <button type="button" onClick={() => removeRide(index)} aria-label={`Supprimer la course ${index + 1}`} className="flex h-9 w-[34px] items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-zinc-600 transition hover:border-rose-400/20 hover:bg-rose-400/[0.06] hover:text-rose-400 sm:h-10 sm:w-10"><Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" /></button>}
               </div>
