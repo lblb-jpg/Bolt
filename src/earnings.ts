@@ -65,8 +65,8 @@ export const getCompletedWeeklySettlements = (
       const nextMonday = addDays(weekStart, 7);
       const totalGross = weekEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0);
       const totalCash = weekEntries.reduce((sum, entry) => sum + entry.cashEarnings, 0);
-      const totalExpenses = weekEntries.reduce((sum, entry) => sum + entry.expenses, 0);
-      const totalNetBeforeFee = weekEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
+      const totalExpenses = 0;
+      const totalNetBeforeFee = totalGross;
       return {
         weekStart,
         weekEnd: addDays(weekStart, 6),

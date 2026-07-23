@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Edit2, Trash2, Calendar, PiggyBank, Search, MessageSquare, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit2, Trash2, Calendar, PiggyBank, Search, MessageSquare, AlertCircle, ChevronLeft, ChevronRight, Clock3, CreditCard } from "lucide-react";
 import { ShiftEntry } from "../types";
 
 interface HistoryListProps {
@@ -86,12 +86,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   }, [currentPage, totalPages]);
 
   // Selected period totals
-  const periodTotalGross = filteredEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0);
+  const periodTotalNet = filteredEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
 
   return (
     <div className="space-y-4">
       {/* Search & Filter Toolbar */}
-      {entries.length > 0 && <div className="space-y-2.5 rounded-xl border border-white/5 bg-[#16191F] p-2.5 sm:p-3">
+      {entries.length > 0 && <div className="glass-card space-y-2.5 rounded-[24px] p-2.5 sm:p-3">
         <div className="grid grid-cols-4 gap-1 rounded-xl bg-[#0F1115] p-1">
           {([
             ["month", "Mois"],
@@ -143,14 +143,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             </span>
             <div className="h-3 w-[1px] bg-white/5" />
             <span>
-              Gains bruts : <strong className="text-emerald-400 font-mono font-bold">{formatCurrency(periodTotalGross)}</strong>
+              Total net : <strong className="text-emerald-400 font-mono font-bold">{formatCurrency(periodTotalNet)}</strong>
             </span>
         </div>
       </div>}
 
       {/* History table / cards */}
       {filteredEntries.length === 0 ? (
-        <div className="bg-[#16191F] border border-white/5 rounded-2xl px-5 py-8 sm:py-10 text-center flex flex-col items-center justify-center gap-2.5">
+        <div className="glass-card rounded-[24px] px-5 py-8 sm:py-10 text-center flex flex-col items-center justify-center gap-2.5">
           <div className="h-9 w-9 rounded-full bg-white/[0.03] flex items-center justify-center">
             <AlertCircle className="h-5 w-5 text-zinc-600" />
           </div>
@@ -166,17 +166,16 @@ export const HistoryList: React.FC<HistoryListProps> = ({
       ) : (
         <div className="space-y-3">
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-hidden bg-[#16191F] border border-white/5 rounded-2xl">
+          <div className="glass-card hidden overflow-hidden rounded-[24px] md:block">
             <table className="w-full text-left border-collapse" id="history-table">
               <thead>
                 <tr className="border-b border-white/5 bg-[#0F1115]/50 text-xs font-bold text-gray-400 uppercase tracking-wider">
                   <th className="px-5 py-4">Date</th>
-                  <th className="px-5 py-4">Solde Début</th>
-                  <th className="px-5 py-4">Solde Fin</th>
-                  <th className="px-5 py-4 text-amber-400">Gain Brut</th>
-                  <th className="px-5 py-4 text-sky-400">Espèces</th>
-                  <th className="px-5 py-4 text-rose-400">Frais</th>
-                  <th className="px-5 py-4 text-emerald-400">Gains affichés</th>
+                  <th className="px-5 py-4">Courses</th>
+                  <th className="px-5 py-4 text-emerald-300">Carte</th>
+                  <th className="px-5 py-4 text-amber-400">Après Bolt</th>
+                  <th className="px-5 py-4 text-teal-300">Espèces</th>
+                  <th className="px-5 py-4 text-emerald-400">Total net</th>
                   <th className="px-5 py-4">Notes</th>
                   <th className="px-5 py-4 text-center">Actions</th>
                 </tr>
@@ -186,25 +185,33 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   const cashGross = entry.cashRides?.reduce((sum, amount) => sum + amount, 0)
                     || (entry.cashEarnings > 0 ? entry.cashEarnings / 0.76 : 0);
                   const cashDeduction = Math.max(0, cashGross - entry.cashEarnings);
+                  const cardTotal = entry.rides?.filter((ride) => ride.paymentMethod === "card").reduce((sum, ride) => sum + ride.amount, 0)
+                    ?? Math.max(0, entry.finalBalance - entry.initialBalance);
 
                   return (
                   <tr key={entry.id} className="hover:bg-white/5 transition-colors group">
                     {/* Date */}
                     <td className="px-5 py-4">
-                      <span className="text-sm font-bold text-white flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                        {formatDateLong(entry.date)}
-                      </span>
+                      <div>
+                        <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-zinc-500" />
+                          {formatDateLong(entry.date)}
+                        </span>
+                        <span className="mt-1 flex items-center gap-1 pl-5 text-[9px] font-medium text-zinc-600">
+                          <Clock3 className="h-3 w-3" />
+                          {entry.startTime.replace(":", "h")} → {entry.endTime.replace(":", "h")}
+                        </span>
+                      </div>
                     </td>
 
-                    {/* Solde Début */}
+                    {/* Nombre de courses */}
                     <td className="px-5 py-4 font-mono text-sm text-gray-400">
-                      {formatCurrency(entry.initialBalance)}
+                      {entry.rides?.length ?? entry.cashRides?.length ?? 0}
                     </td>
 
-                    {/* Solde Fin */}
-                    <td className="px-5 py-4 font-mono text-sm text-zinc-300">
-                      {formatCurrency(entry.finalBalance)}
+                    {/* Carte */}
+                    <td className="px-5 py-4 font-mono text-sm text-emerald-300">
+                      {cardTotal > 0 ? `+${formatCurrency(cardTotal)}` : "—"}
                     </td>
 
                     {/* Gain Brut */}
@@ -216,7 +223,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
                     {/* Espèces après commission */}
                     <td className="px-5 py-4 text-sm">
-                      <span className="block font-mono text-sky-400">
+                      <span className="block font-mono text-teal-300">
                         {entry.cashEarnings > 0 ? `+${formatCurrency(entry.cashEarnings)}` : "—"}
                       </span>
                       {cashGross > 0 && (
@@ -226,16 +233,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                       )}
                     </td>
 
-                    {/* Frais */}
-                    <td className="px-5 py-4 font-mono text-sm text-rose-400">
-                      {entry.expenses > 0 ? `-${formatCurrency(entry.expenses)}` : "—"}
-                    </td>
-
-                    {/* Displayed earnings: fuel stays informational in history */}
+                    {/* Total */}
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/5 text-emerald-400 border border-emerald-500/10 font-mono">
                         <PiggyBank className="h-3.5 w-3.5" />
-                        {formatCurrency(entry.grossEarnings)}
+                        {formatCurrency(entry.netEarnings)}
                       </span>
                     </td>
 
@@ -284,41 +286,49 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               const cashGross = entry.cashRides?.reduce((sum, amount) => sum + amount, 0)
                 || (entry.cashEarnings > 0 ? entry.cashEarnings / 0.76 : 0);
               const cashDeduction = Math.max(0, cashGross - entry.cashEarnings);
+              const cardTotal = entry.rides?.filter((ride) => ride.paymentMethod === "card").reduce((sum, ride) => sum + ride.amount, 0)
+                ?? Math.max(0, entry.finalBalance - entry.initialBalance);
 
               return (
               <div
                 key={entry.id}
-                className="bg-[#16191F] border border-white/5 rounded-2xl p-4 space-y-3.5 hover:border-white/10 transition-all shadow-md"
+                className="glass-card rounded-[24px] p-4 space-y-3.5 transition-all"
               >
                 {/* Card Header: Date & Net Profit */}
                 <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-2.5">
-                  <span className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <Calendar className="h-4 w-4 text-emerald-400" />
-                    {formatDateLong(entry.date)}
-                  </span>
+                  <div className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-white">
+                      <Calendar className="h-4 w-4 shrink-0 text-emerald-400" />
+                      <span className="truncate">{formatDateLong(entry.date)}</span>
+                    </span>
+                    <span className="mt-1 flex items-center gap-1 pl-5 text-[9px] font-medium text-zinc-500">
+                      <Clock3 className="h-3 w-3" />
+                      {entry.startTime.replace(":", "h")} → {entry.endTime.replace(":", "h")}
+                    </span>
+                  </div>
                   
                   <span className="text-sm font-bold font-mono text-emerald-400 bg-emerald-500/5 px-2.5 py-1 rounded-lg border border-emerald-500/10 flex items-center gap-1">
-                    {formatCurrency(entry.grossEarnings)}
+                    {formatCurrency(entry.netEarnings)}
                   </span>
                 </div>
 
                 {/* Card Metrics Grid */}
                 <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#0F1115]/80 border border-white/5">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Solde Début</span>
-                    <span className="text-xs font-mono text-gray-300 font-semibold">{formatCurrency(entry.initialBalance)}</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Courses</span>
+                    <span className="text-xs font-mono text-gray-300 font-semibold">{entry.rides?.length ?? entry.cashRides?.length ?? 0}</span>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Solde Fin</span>
-                    <span className="text-xs font-mono text-gray-300 font-semibold">{formatCurrency(entry.finalBalance)}</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Carte</span>
+                    <span className="flex items-center gap-1 text-xs font-mono text-emerald-300 font-semibold"><CreditCard className="h-3 w-3" />{formatCurrency(cardTotal)}</span>
                   </div>
                   <div className="space-y-0.5 border-t border-white/5 pt-2">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Gain Brut</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Total après Bolt</span>
                     <span className="text-xs font-mono text-amber-400 font-bold">+{formatCurrency(entry.grossEarnings)}</span>
                   </div>
                   <div className="space-y-0.5 border-t border-white/5 pt-2">
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Espèces après -24 %</span>
-                    <span className="text-xs font-mono text-sky-400 font-semibold">
+                    <span className="text-xs font-mono text-teal-300 font-semibold">
                       {entry.cashEarnings > 0 ? `+${formatCurrency(entry.cashEarnings)}` : "0,00 €"}
                     </span>
                     {cashGross > 0 && (
@@ -328,10 +338,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     )}
                   </div>
                   <div className="space-y-0.5 border-t border-white/5 pt-2">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Frais / Carbu</span>
-                    <span className="text-xs font-mono text-rose-400 font-semibold">
-                      {entry.expenses > 0 ? `-${formatCurrency(entry.expenses)}` : "0,00 €"}
-                    </span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Solde départ <span className="text-[8px] text-zinc-600">Info</span></span>
+                    <span className="text-xs font-mono text-zinc-400 font-semibold">{formatCurrency(entry.initialBalance)}</span>
+                  </div>
+                  <div className="space-y-0.5 border-t border-white/5 pt-2">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block">Solde fin <span className="text-[8px] text-zinc-600">Info</span></span>
+                    <span className="text-xs font-mono text-zinc-300 font-semibold">{formatCurrency(entry.finalBalance)}</span>
                   </div>
                 </div>
 

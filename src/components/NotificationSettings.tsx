@@ -74,9 +74,9 @@ export const NotificationSettings = ({ onBack }: NotificationSettingsProps) => {
       </div>
 
       <section aria-labelledby="notification-settings-title">
-        <div className="rounded-2xl border border-white/[0.07] bg-[#171A20] p-4 sm:p-5">
+        <div className="glass-card glass-card--blue rounded-[28px] p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isEnabled ? "border-sky-500/20 bg-sky-500/10 text-sky-400" : "border-white/[0.06] bg-white/[0.025] text-zinc-500"}`}>
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isEnabled ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : "border-white/[0.06] bg-white/[0.025] text-zinc-500"}`}>
             {isEnabled ? <Bell className="h-[18px] w-[18px]" /> : <BellOff className="h-[18px] w-[18px]" />}
           </div>
           <div className="min-w-0 flex-1">
@@ -108,7 +108,7 @@ export const NotificationSettings = ({ onBack }: NotificationSettingsProps) => {
               <button
                 type="button"
                 onClick={handleToggle}
-                className={`min-h-11 w-full rounded-xl px-4 text-xs font-bold transition active:scale-[0.98] sm:w-auto sm:flex-1 ${isEnabled ? "border border-white/[0.07] bg-white/[0.03] text-zinc-300" : "bg-sky-500 text-sky-950 shadow-[0_8px_24px_rgba(14,165,233,0.16)]"}`}
+                className={`min-h-11 w-full rounded-xl px-4 text-xs font-bold transition active:scale-[0.98] sm:w-auto sm:flex-1 ${isEnabled ? "border border-white/[0.07] bg-white/[0.03] text-zinc-300" : "bg-emerald-500 text-emerald-950 shadow-[0_8px_24px_rgba(52,187,120,0.18)]"}`}
               >
                 {isEnabled ? "Désactiver" : "Activer les notifications"}
               </button>

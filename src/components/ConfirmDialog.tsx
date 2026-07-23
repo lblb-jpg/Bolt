@@ -49,7 +49,7 @@ export const ConfirmDialog = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isLoading) onCancel();
       }}
@@ -59,7 +59,7 @@ export const ConfirmDialog = ({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#16191F] shadow-2xl shadow-black/50"
+        className="glass-card w-full max-w-sm overflow-hidden rounded-[28px] shadow-2xl shadow-black/50"
       >
         <div className="flex items-start gap-3 p-5 sm:p-6">
           <div

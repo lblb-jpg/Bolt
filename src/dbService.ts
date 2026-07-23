@@ -1,11 +1,12 @@
 import { supabase, supabaseConfigured } from "./supabase";
-import { ShiftEntry } from "./types";
+import { RideEntry, ShiftEntry } from "./types";
 import { UserProfile } from "./profileSession";
 
 const TABLE_NAME = "bolt_shifts";
 const LEGACY_CASH_NOTE_PREFIX = /^\[myshift_cash=(-?\d+(?:\.\d+)?)\]\n?/;
 const CASH_RIDES_NOTE_PREFIX = /^\[myshift_cash_rides=([\d.,-]*);net=(-?\d+(?:\.\d+)?)\]\n?/;
 const PROFILE_NOTE_PREFIX = /^\[myshift_profile=(principal|elyesse)\]\n?/;
+const RIDES_NOTE_PREFIX = /^\[myshift_rides=([^\]]+)\]\n?/;
 
 type ShiftRow = {
   id: string;
@@ -16,6 +17,7 @@ type ShiftRow = {
   final_balance: number | string;
   cash_earnings?: number | string | null;
   cash_rides?: Array<number | string> | null;
+  rides?: RideEntry[] | null;
   profile_id?: UserProfile["id"] | null;
   gross_earnings: number | string;
   expenses: number | string;
@@ -32,11 +34,7 @@ const getLocalEntries = (profileId: UserProfile["id"]): ShiftEntry[] => {
   if (!data) return [];
 
   try {
-    return (JSON.parse(data) as ShiftEntry[]).map((entry) => ({
-      ...entry,
-      cashRides: Array.isArray(entry.cashRides) ? entry.cashRides.map(Number) : [],
-      cashEarnings: Number(entry.cashEarnings ?? 0),
-    }));
+    return (JSON.parse(data) as ShiftEntry[]).map(normalizeEntry);
   } catch (error) {
     console.error("Impossible de lire les données locales :", error);
     return [];
@@ -52,14 +50,41 @@ const sortEntries = (entries: ShiftEntry[]) =>
 
 const parseCashNote = (notes: string) => {
   const cleanNotes = notes.replace(PROFILE_NOTE_PREFIX, "");
-  const ridesMatch = cleanNotes.match(CASH_RIDES_NOTE_PREFIX);
-  const legacyMatch = cleanNotes.match(LEGACY_CASH_NOTE_PREFIX);
+  const ridesMetadata = cleanNotes.match(RIDES_NOTE_PREFIX)?.[1];
+  const notesAfterRides = cleanNotes.replace(RIDES_NOTE_PREFIX, "");
+  const ridesMatch = notesAfterRides.match(CASH_RIDES_NOTE_PREFIX);
+  const legacyMatch = notesAfterRides.match(LEGACY_CASH_NOTE_PREFIX);
   return {
     cashRides: ridesMatch?.[1]
       ? ridesMatch[1].split(",").map(Number).filter((amount) => Number.isFinite(amount) && amount > 0)
       : [],
     cashEarnings: ridesMatch ? Number(ridesMatch[2]) : legacyMatch ? Number(legacyMatch[1]) : 0,
-    notes: cleanNotes.replace(CASH_RIDES_NOTE_PREFIX, "").replace(LEGACY_CASH_NOTE_PREFIX, ""),
+    rides: ridesMetadata ? parseRidesMetadata(ridesMetadata) : [],
+    notes: notesAfterRides.replace(CASH_RIDES_NOTE_PREFIX, "").replace(LEGACY_CASH_NOTE_PREFIX, ""),
+  };
+};
+
+const parseRidesMetadata = (value: string): RideEntry[] => {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(value));
+    return Array.isArray(parsed) ? parsed.filter((ride) => Number(ride.amount) > 0 && (ride.paymentMethod === "card" || ride.paymentMethod === "cash")) : [];
+  } catch {
+    return [];
+  }
+};
+
+const legacyRides = (entry: Pick<ShiftEntry, "initialBalance" | "finalBalance" | "cashRides">): RideEntry[] => [
+  ...(entry.finalBalance > entry.initialBalance ? [{ amount: entry.finalBalance - entry.initialBalance, paymentMethod: "card" as const }] : []),
+  ...(entry.cashRides ?? []).map((amount) => ({ amount, paymentMethod: "cash" as const })),
+];
+
+const normalizeEntry = (entry: ShiftEntry): ShiftEntry => {
+  const cashRides = Array.isArray(entry.cashRides) ? entry.cashRides.map(Number) : [];
+  return {
+    ...entry,
+    cashRides,
+    rides: Array.isArray(entry.rides) && entry.rides.length ? entry.rides : legacyRides({ ...entry, cashRides }),
+    cashEarnings: Number(entry.cashEarnings ?? 0),
   };
 };
 
@@ -74,18 +99,22 @@ const encodeCashNote = (cashRides: number[], cashEarnings: number, notes: string
     ? `[myshift_cash_rides=${cashRides.join(",")};net=${cashEarnings}]\n${notes}`
     : notes;
 
+const encodeRidesNote = (rides: RideEntry[], notes: string) =>
+  rides.length ? `[myshift_rides=${encodeURIComponent(JSON.stringify(rides))}]\n${notes}` : notes;
+
 const isMissingCashColumnError = (error: { code?: string; message?: string } | null) =>
   Boolean(error && (
     error.code === "PGRST204"
     || error.code === "42703"
     || error.message?.includes("cash_earnings")
     || error.message?.includes("cash_rides")
+    || error.message?.includes("rides")
     || error.message?.includes("profile_id")
   ));
 
 const fromRow = (row: ShiftRow): ShiftEntry => {
   const parsedNotes = parseCashNote(row.notes ?? "");
-  return {
+  return normalizeEntry({
     id: row.id,
     date: row.date,
     startTime: row.start_time.slice(0, 5),
@@ -96,12 +125,13 @@ const fromRow = (row: ShiftRow): ShiftEntry => {
       ? row.cash_rides.map(Number)
       : parsedNotes.cashRides,
     cashEarnings: Number(row.cash_earnings ?? 0) || parsedNotes.cashEarnings,
+    rides: row.rides?.length ? row.rides : parsedNotes.rides,
     grossEarnings: Number(row.gross_earnings),
     expenses: Number(row.expenses),
     netEarnings: Number(row.net_earnings),
     notes: parsedNotes.notes,
     createdAt: Number(row.created_at),
-  };
+  });
 };
 
 const toRow = (profileId: UserProfile["id"], entry: Omit<ShiftEntry, "id">) => ({
@@ -112,6 +142,7 @@ const toRow = (profileId: UserProfile["id"], entry: Omit<ShiftEntry, "id">) => (
   initial_balance: entry.initialBalance,
   final_balance: entry.finalBalance,
   cash_rides: entry.cashRides,
+  rides: entry.rides,
   cash_earnings: entry.cashEarnings,
   gross_earnings: entry.grossEarnings,
   expenses: entry.expenses,
@@ -127,6 +158,7 @@ const toUpdateRow = (updates: Partial<Omit<ShiftEntry, "id" | "createdAt">>) => 
   ...(updates.initialBalance !== undefined && { initial_balance: updates.initialBalance }),
   ...(updates.finalBalance !== undefined && { final_balance: updates.finalBalance }),
   ...(updates.cashRides !== undefined && { cash_rides: updates.cashRides }),
+  ...(updates.rides !== undefined && { rides: updates.rides }),
   ...(updates.cashEarnings !== undefined && { cash_earnings: updates.cashEarnings }),
   ...(updates.grossEarnings !== undefined && { gross_earnings: updates.grossEarnings }),
   ...(updates.expenses !== undefined && { expenses: updates.expenses }),
@@ -135,16 +167,16 @@ const toUpdateRow = (updates: Partial<Omit<ShiftEntry, "id" | "createdAt">>) => 
 });
 
 const toLegacyRow = (profileId: UserProfile["id"], entry: Omit<ShiftEntry, "id">) => {
-  const { cash_earnings: _cashEarnings, cash_rides: _cashRides, profile_id: _profileId, ...row } = toRow(profileId, entry);
-  return { ...row, notes: encodeProfileNote(profileId, encodeCashNote(entry.cashRides, entry.cashEarnings, entry.notes ?? "")) };
+  const { cash_earnings: _cashEarnings, cash_rides: _cashRides, rides: _rides, profile_id: _profileId, ...row } = toRow(profileId, entry);
+  return { ...row, notes: encodeProfileNote(profileId, encodeRidesNote(entry.rides, encodeCashNote(entry.cashRides, entry.cashEarnings, entry.notes ?? ""))) };
 };
 
 const toLegacyUpdateRow = (profileId: UserProfile["id"], updates: Partial<Omit<ShiftEntry, "id" | "createdAt">>) => {
-  const { cash_earnings: _cashEarnings, cash_rides: _cashRides, ...row } = toUpdateRow(updates);
-  if (updates.cashRides === undefined && updates.cashEarnings === undefined && updates.notes === undefined) return row;
+  const { cash_earnings: _cashEarnings, cash_rides: _cashRides, rides: _rides, ...row } = toUpdateRow(updates);
+  if (updates.cashRides === undefined && updates.cashEarnings === undefined && updates.rides === undefined && updates.notes === undefined) return row;
   return {
     ...row,
-    notes: encodeProfileNote(profileId, encodeCashNote(updates.cashRides ?? [], updates.cashEarnings ?? 0, updates.notes ?? "")),
+    notes: encodeProfileNote(profileId, encodeRidesNote(updates.rides ?? [], encodeCashNote(updates.cashRides ?? [], updates.cashEarnings ?? 0, updates.notes ?? ""))),
   };
 };
 

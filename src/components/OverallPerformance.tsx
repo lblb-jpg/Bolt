@@ -73,9 +73,9 @@ export const OverallPerformance = ({ entries }: OverallPerformanceProps) => {
       : null;
 
     let verdict = "Données insuffisantes";
-    let verdictColor = "text-sky-400";
-    let verdictDot = "bg-sky-400";
-    let verdictBackground = "border-sky-500/15 bg-sky-500/5";
+    let verdictColor = "text-teal-300";
+    let verdictDot = "bg-teal-300";
+    let verdictBackground = "border-teal-400/15 bg-teal-400/5";
 
     if (entries.length >= 4) {
       if (trendPercent !== null && trendPercent >= 10) {
@@ -149,14 +149,14 @@ export const OverallPerformance = ({ entries }: OverallPerformanceProps) => {
           value: formatCurrency(analysis.medianNet),
           detail: "Hors effet des extrêmes",
           icon: Scale,
-          color: "text-violet-400",
+          color: "text-teal-300",
         },
         {
           title: "Régularité",
           value: `${analysis.consistency} %`,
           detail: analysis.consistency >= 65 ? "Résultats réguliers" : "Résultats variables",
           icon: Gauge,
-          color: analysis.consistency >= 65 ? "text-sky-400" : "text-amber-400",
+          color: analysis.consistency >= 65 ? "text-teal-300" : "text-amber-400",
         },
         {
           title: "Meilleur jour",
@@ -169,7 +169,7 @@ export const OverallPerformance = ({ entries }: OverallPerformanceProps) => {
     : [];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#16191F] transition-colors hover:border-white/10">
+    <div className="glass-card glass-card--violet h-full overflow-hidden rounded-[26px] transition-transform">
       <button
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -179,7 +179,7 @@ export const OverallPerformance = ({ entries }: OverallPerformanceProps) => {
         id="overall-performance-toggle"
       >
         <div className="flex min-w-0 items-center gap-3">
-          <div className="rounded-xl border border-violet-500/10 bg-violet-500/5 p-2 text-violet-400">
+          <div className="icon-well icon-well--violet rounded-[14px] p-2.5 text-emerald-200">
             <Sparkles className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -216,12 +216,12 @@ export const OverallPerformance = ({ entries }: OverallPerformanceProps) => {
       >
         <div className="overflow-hidden">
           {analysis ? (
-            <div className="space-y-3 border-t border-white/5 p-3.5 sm:p-4">
+            <div className="space-y-3 border-t border-white/10 p-3.5 sm:p-4">
               <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
                 {cards.map((card) => {
                   const Icon = card.icon;
                   return (
-                    <div key={card.title} className="min-w-0 rounded-xl border border-white/5 bg-[#0F1115]/70 p-3">
+                    <div key={card.title} className="glass-inset min-w-0 rounded-2xl p-3">
                       <div className="flex items-center gap-1.5">
                         <Icon className={`h-3.5 w-3.5 shrink-0 ${card.color}`} />
                         <span className="truncate text-[9px] font-bold uppercase tracking-wide text-zinc-500">

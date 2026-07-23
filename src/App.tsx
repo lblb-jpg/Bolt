@@ -4,7 +4,6 @@ import { AddShiftForm } from "./components/AddShiftForm";
 import { HistoryList } from "./components/HistoryList";
 import { DashboardStats } from "./components/DashboardStats";
 import { ConfirmDialog } from "./components/ConfirmDialog";
-import { OverallPerformance } from "./components/OverallPerformance";
 import { dbService } from "./dbService";
 import { ShiftEntry } from "./types";
 import { WeeklyAccountSettlement } from "./components/WeeklyAccountSettlement";
@@ -12,6 +11,39 @@ import { NotificationSettings } from "./components/NotificationSettings";
 import { NotificationScheduler } from "./components/NotificationScheduler";
 import { LoginScreen } from "./components/LoginScreen";
 import { profileSession, UserProfile } from "./profileSession";
+import { PREFILLED_JULY_ENTRIES } from "./prefilledEntries";
+
+const PREFILL_STORAGE_KEY = "myshift_prefilled_july_2026_v1";
+let prefillPromise: Promise<boolean> | null = null;
+
+const ensurePrefilledEntries = (
+  profileId: UserProfile["id"],
+  currentEntries: ShiftEntry[],
+): Promise<boolean> => {
+  if (profileId !== "principal" || localStorage.getItem(PREFILL_STORAGE_KEY) === "done") {
+    return Promise.resolve(false);
+  }
+  if (prefillPromise) return prefillPromise;
+
+  prefillPromise = (async () => {
+    let addedEntry = false;
+    const existingDates = new Set(currentEntries.map((entry) => entry.date));
+
+    for (const entry of PREFILLED_JULY_ENTRIES) {
+      if (existingDates.has(entry.date)) continue;
+      await dbService.addEntry(profileId, entry);
+      existingDates.add(entry.date);
+      addedEntry = true;
+    }
+
+    localStorage.setItem(PREFILL_STORAGE_KEY, "done");
+    return addedEntry;
+  })().finally(() => {
+    prefillPromise = null;
+  });
+
+  return prefillPromise;
+};
 
 export default function App() {
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(() => profileSession.getActiveProfile());
@@ -31,10 +63,10 @@ export default function App() {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const monthEntries = entries.filter((entry) => entry.date.startsWith(currentMonth));
-    const totalNet = monthEntries.reduce((sum, entry) => sum + entry.netEarnings, 0);
-    const totalExpenses = monthEntries.reduce((sum, entry) => sum + entry.expenses, 0);
+    const totalNet = monthEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0);
+    const totalExpenses = 0;
     const bestEntry = monthEntries.reduce<ShiftEntry | null>(
-      (best, entry) => (!best || entry.netEarnings > best.netEarnings ? entry : best),
+      (best, entry) => (!best || entry.grossEarnings > best.grossEarnings ? entry : best),
       null,
     );
 
@@ -43,11 +75,17 @@ export default function App() {
       stats: {
         totalGross: monthEntries.reduce((sum, entry) => sum + entry.grossEarnings, 0),
         totalCash: monthEntries.reduce((sum, entry) => sum + entry.cashEarnings, 0),
+        totalCashGross: monthEntries.reduce((sum, entry) => {
+          const cashGross = entry.cashRides?.length
+            ? entry.cashRides.reduce((rideSum, amount) => rideSum + amount, 0)
+            : entry.cashEarnings / 0.76;
+          return sum + cashGross;
+        }, 0),
         totalNet,
         totalExpenses,
         daysCount: monthEntries.length,
         averageNetPerDay: monthEntries.length > 0 ? totalNet / monthEntries.length : 0,
-        maxNetDay: bestEntry ? { date: bestEntry.date, amount: bestEntry.netEarnings } : null,
+        maxNetDay: bestEntry ? { date: bestEntry.date, amount: bestEntry.grossEarnings } : null,
       },
     };
   }, [entries]);
@@ -57,7 +95,9 @@ export default function App() {
     if (!activeProfile) return;
     setIsSyncing(true);
     try {
-      const data = await dbService.getEntries(activeProfile.id);
+      let data = await dbService.getEntries(activeProfile.id);
+      const entriesAdded = await ensurePrefilledEntries(activeProfile.id, data);
+      if (entriesAdded) data = await dbService.getEntries(activeProfile.id);
       setEntries(data);
     } catch (error) {
       console.error("Error fetching entries:", error);
@@ -157,16 +197,15 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-[#0F1115] font-sans text-zinc-100 selection:bg-emerald-500 selection:text-zinc-950">
+    <div className="app-shell flex min-h-full flex-col font-sans text-zinc-100 selection:bg-emerald-300 selection:text-emerald-950">
       {/* Minimal Header */}
       <Header
-        isSyncing={isSyncing}
-        onRefresh={fetchEntries}
         onOpenNotifications={() => { window.location.hash = "notifications"; }}
         notificationsOpen={currentView === "notifications"}
         profileName={activeProfile.name}
         onLogout={handleLogout}
       />
+      <div className="app-header-spacer shrink-0" aria-hidden="true" />
 
       <NotificationScheduler entries={entries} />
 
@@ -176,17 +215,25 @@ export default function App() {
           setCurrentView("dashboard");
         }} />
       ) : (
-      <main className="flex-1 max-w-4xl w-full mx-auto px-3.5 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
-        <section aria-labelledby="monthly-summary-title">
+      <main className="relative z-10 mx-auto w-full max-w-5xl flex-1 space-y-5 px-3.5 py-5 sm:space-y-7 sm:px-6 sm:py-9">
+        <div className="dashboard-intro">
+          <div>
+            <p className="eyebrow">Vue d’ensemble</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">
+              Bonjour, {activeProfile.name}
+            </h2>
+          </div>
+          <p className="max-w-xs text-xs leading-relaxed text-slate-400 sm:text-right">
+            Vos revenus, vos courses et votre progression réunis dans un espace clair.
+          </p>
+        </div>
+
+        <section aria-labelledby="monthly-summary-title" className="bento-tile bento-tile--primary">
           <DashboardStats stats={monthlyStats.stats} monthLabel={monthlyStats.label} />
         </section>
 
-        <section aria-labelledby="overall-performance-title">
-          <OverallPerformance entries={entries} />
-        </section>
-
         {/* Simple Add Form */}
-        <section id="add-shift-form-section">
+        <section id="add-shift-form-section" className="bento-feature">
           <AddShiftForm
             onSave={handleSaveEntry}
             editingEntry={editingEntry}
@@ -215,8 +262,8 @@ export default function App() {
       )}
 
       {/* Compact Footer */}
-      <footer className="app-footer mt-12 border-t border-white/5 bg-[#0F1115] py-6 text-[11px] text-zinc-600">
-        <div className="max-w-4xl mx-auto px-4 text-center">
+      <footer className="app-footer relative z-10 mt-12 border-t border-zinc-200 bg-white py-6 text-[11px] text-zinc-500">
+        <div className="max-w-5xl mx-auto px-4 text-center">
           <p>© {new Date().getFullYear()} MyShift · Espace {activeProfile.name}</p>
         </div>
       </footer>

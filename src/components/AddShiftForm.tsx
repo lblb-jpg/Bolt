@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { PlusCircle, Save, X, Calendar, Euro, AlertCircle, Target, CheckCircle2, Banknote, Plus, Trash2 } from "lucide-react";
-import { ShiftEntry } from "../types";
+import React, { useEffect, useState } from "react";
+import { AlertCircle, Banknote, Calendar, CheckCircle2, Clock3, CreditCard, PlusCircle, Save, Target, Trash2, WalletCards, X } from "lucide-react";
+import { PaymentMethod, RideEntry, ShiftEntry } from "../types";
 
 const DAILY_EARNINGS_TARGET = 200;
 const CASH_COMMISSION_RATE = 0.24;
+
+type RideInput = { amount: string; paymentMethod: PaymentMethod };
 
 interface AddShiftFormProps {
   onSave: (entry: Omit<ShiftEntry, "id" | "createdAt">) => void;
@@ -11,421 +13,244 @@ interface AddShiftFormProps {
   onCancelEdit: () => void;
 }
 
-export const AddShiftForm: React.FC<AddShiftFormProps> = ({
-  onSave,
-  editingEntry,
-  onCancelEdit,
-}) => {
-  // Form States
-  const [date, setDate] = useState<string>("");
-  const [initialBalance, setInitialBalance] = useState<string>("");
-  const [finalBalance, setFinalBalance] = useState<string>("");
-  const [cashRides, setCashRides] = useState<string[]>([""]);
-  const [expenses, setExpenses] = useState<string>("0");
-  const [notes, setNotes] = useState<string>("");
+const emptyRide = (paymentMethod: PaymentMethod = "card"): RideInput => ({ amount: "", paymentMethod });
+const roundMoney = (amount: number) => Math.round(amount * 100) / 100;
+const parseNum = (value: string) => {
+  const parsed = Number.parseFloat(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export const AddShiftForm: React.FC<AddShiftFormProps> = ({ onSave, editingEntry, onCancelEdit }) => {
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [rides, setRides] = useState<RideInput[]>([emptyRide()]);
+  const [initialBalance, setInitialBalance] = useState("");
+  const [finalBalance, setFinalBalance] = useState("");
+  const [notes, setNotes] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Set default values or editing values
   useEffect(() => {
     if (editingEntry) {
+      const existingRides = editingEntry.rides?.length
+        ? editingEntry.rides
+        : [
+            ...(editingEntry.finalBalance > editingEntry.initialBalance
+              ? [{ amount: editingEntry.finalBalance - editingEntry.initialBalance, paymentMethod: "card" as const }]
+              : []),
+            ...(editingEntry.cashRides ?? []).map((amount) => ({ amount, paymentMethod: "cash" as const })),
+          ];
       setDate(editingEntry.date);
-      setInitialBalance(editingEntry.initialBalance.toString());
-      setFinalBalance(editingEntry.finalBalance.toString());
-      setCashRides(
-        editingEntry.cashRides?.length
-          ? editingEntry.cashRides.map(String)
-          : editingEntry.cashEarnings > 0
-            ? [(editingEntry.cashEarnings / (1 - CASH_COMMISSION_RATE)).toFixed(2)]
-            : [""],
-      );
-      setExpenses(editingEntry.expenses.toString());
-      setNotes(editingEntry.notes || "");
-      setErrorMessage(null);
+      setStartTime(editingEntry.startTime);
+      setEndTime(editingEntry.endTime);
+      setRides(existingRides.length
+        ? [...existingRides.map((ride) => ({ ...ride, amount: String(ride.amount) })), emptyRide(existingRides[existingRides.length - 1].paymentMethod)]
+        : [emptyRide()]);
+      setInitialBalance(editingEntry.initialBalance ? String(editingEntry.initialBalance) : "");
+      setFinalBalance(editingEntry.finalBalance ? String(editingEntry.finalBalance) : "");
+      setNotes(editingEntry.notes ?? "");
     } else {
-      // Default to today's date in local time zone
       const today = new Date();
-      const offset = today.getTimezoneOffset();
-      const localToday = new Date(today.getTime() - offset * 60 * 1000);
-      setDate(localToday.toISOString().split("T")[0]);
-      
+      const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60_000);
+      setDate(localToday.toISOString().slice(0, 10));
+      setStartTime("");
+      setEndTime("");
+      setRides([emptyRide()]);
       setInitialBalance("");
       setFinalBalance("");
-      setCashRides([""]);
-      setExpenses("0");
       setNotes("");
-      setErrorMessage(null);
     }
+    setErrorMessage(null);
   }, [editingEntry]);
 
-  // Clean parsing helper
-  const parseNum = (val: string): number => {
-    const cleaned = val.replace(",", ".");
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
+  const validRides: RideEntry[] = rides
+    .map((ride) => ({ amount: parseNum(ride.amount), paymentMethod: ride.paymentMethod }))
+    .filter((ride) => ride.amount > 0);
+  const cardTotal = roundMoney(validRides.filter((ride) => ride.paymentMethod === "card").reduce((sum, ride) => sum + ride.amount, 0));
+  const cashGross = roundMoney(validRides.filter((ride) => ride.paymentMethod === "cash").reduce((sum, ride) => sum + ride.amount, 0));
+  const cashCommission = roundMoney(cashGross * CASH_COMMISSION_RATE);
+  const cashNet = roundMoney(cashGross - cashCommission);
+  const grossEarnings = roundMoney(cardTotal + cashNet);
+  const netEarnings = grossEarnings;
+  const targetProgress = Math.min(100, Math.max(0, (grossEarnings / DAILY_EARNINGS_TARGET) * 100));
+  const targetReached = grossEarnings >= DAILY_EARNINGS_TARGET;
+
+  const formatCurrency = (amount: number) => new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+  }).format(amount);
+
+  const updateRide = (index: number, updates: Partial<RideInput>) => {
+    setRides((current) => {
+      const next = current.map((ride, rideIndex) => rideIndex === index ? { ...ride, ...updates } : ride);
+      const nextRow = next[index + 1];
+
+      if (updates.paymentMethod && nextRow?.amount.trim() === "") {
+        next[index + 1] = { ...nextRow, paymentMethod: updates.paymentMethod };
+      }
+
+      const isTypingOnLastRow = index === current.length - 1
+        && updates.amount !== undefined
+        && updates.amount.trim() !== "";
+      return isTypingOnLastRow ? [...next, emptyRide(next[index].paymentMethod)] : next;
+    });
   };
 
-  const retainedCashForRide = (amount: number) => Math.round(amount * (1 - CASH_COMMISSION_RATE) * 100) / 100;
+  const removeRide = (index: number) => {
+    setRides((current) => {
+      const next = current.filter((_, rideIndex) => rideIndex !== index);
+      if (next.length === 0) next.push(emptyRide());
+      else if (next[next.length - 1].amount.trim() !== "") next.push(emptyRide(next[next.length - 1].paymentMethod));
+      return next;
+    });
+  };
 
-  // Live calculations
-  const initBalNum = parseNum(initialBalance);
-  const finBalNum = parseNum(finalBalance);
-  const cashRideAmounts = cashRides.map(parseNum).filter((amount) => amount > 0);
-  const cashGross = cashRideAmounts.reduce((sum, amount) => sum + amount, 0);
-  const cashNum = cashRideAmounts.reduce((sum, amount) => sum + retainedCashForRide(amount), 0);
-  const cashDeduction = Math.round((cashGross - cashNum) * 100) / 100;
-  const expNum = parseNum(expenses);
-
-  const calculatedGross = Math.max(0, finBalNum - initBalNum + cashNum);
-  const calculatedNet = Math.max(0, calculatedGross - expNum);
-  const targetFinalBalance = Math.max(0, initBalNum + DAILY_EARNINGS_TARGET - cashNum);
-  const remainingToTarget = Math.max(0, DAILY_EARNINGS_TARGET - calculatedGross);
-  const targetProgress = Math.min(100, (calculatedGross / DAILY_EARNINGS_TARGET) * 100);
-  const targetReached = finalBalance !== "" && calculatedGross >= DAILY_EARNINGS_TARGET;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     setErrorMessage(null);
-
-    if (!date) {
-      setErrorMessage("Veuillez sélectionner une date.");
-      return;
-    }
-    if (initialBalance === "" || finalBalance === "") {
-      setErrorMessage("Veuillez saisir le solde initial et le solde final.");
-      return;
-    }
-
-    const init = parseNum(initialBalance);
-    const final = parseNum(finalBalance);
-    const rides = cashRides.map(parseNum).filter((amount) => amount > 0);
-    const cash = rides.reduce((sum, amount) => sum + retainedCashForRide(amount), 0);
-    
-    if (final - init + cash < 0) {
-      if (!confirm("Le total avec les espèces est négatif. Enregistrer quand même ?")) {
-        return;
-      }
-    }
-
-    const gross = final - init + cash;
-    const exp = parseNum(expenses);
-    const net = gross - exp;
+    if (!date) return setErrorMessage("Veuillez sélectionner une date.");
+    if (!startTime || !endTime) return setErrorMessage("Veuillez renseigner l’heure de début et l’heure de fin.");
+    if (validRides.length === 0) return setErrorMessage("Ajoutez au moins une course avec un montant supérieur à 0 €.");
+    if (parseNum(initialBalance) < 0 || parseNum(finalBalance) < 0) return setErrorMessage("Les soldes ne peuvent pas être négatifs.");
 
     onSave({
       date,
-      startTime: "10:00",
-      endTime: "18:00",
-      initialBalance: init,
-      finalBalance: final,
-      cashRides: rides,
-      cashEarnings: cash,
-      grossEarnings: gross,
-      expenses: exp,
-      netEarnings: net,
+      startTime,
+      endTime,
+      initialBalance: roundMoney(parseNum(initialBalance)),
+      finalBalance: roundMoney(parseNum(finalBalance)),
+      rides: validRides,
+      cashRides: validRides.filter((ride) => ride.paymentMethod === "cash").map((ride) => ride.amount),
+      cashEarnings: cashNet,
+      grossEarnings,
+      expenses: 0,
+      netEarnings,
       notes: notes.trim(),
     });
 
-    // Reset if we were not editing
     if (!editingEntry) {
+      setRides([emptyRide()]);
+      setStartTime("");
+      setEndTime("");
       setInitialBalance("");
       setFinalBalance("");
-      setCashRides([""]);
-      setExpenses("0");
       setNotes("");
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
-  };
-
   return (
-    <div className="bg-[#16191F] border border-white/5 rounded-2xl p-4 sm:p-6 shadow-xl shadow-black/10 backdrop-blur-sm">
-      <div className="flex items-center justify-between mb-5">
+    <div className="glass-card glass-card--blue rounded-[28px] p-4 sm:p-6">
+      <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <PlusCircle className={`h-5 w-5 ${editingEntry ? "text-amber-400" : "text-emerald-400"}`} />
-          <h2 className="text-lg font-bold text-white">
-            {editingEntry ? "Modifier la journée" : "Enregistrer une journée"}
-          </h2>
+          <h2 className="text-lg font-bold text-white">{editingEntry ? "Modifier la journée" : "Saisir mes courses"}</h2>
         </div>
         {editingEntry && (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/5"
-            id="cancel-edit-btn"
-          >
-            <X className="h-3.5 w-3.5" />
-            <span>Annuler</span>
+          <button type="button" onClick={onCancelEdit} className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-400">
+            <X className="h-3.5 w-3.5" /> Annuler
           </button>
         )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5" id="shift-entry-form">
         {errorMessage && (
-          <div className="p-3.5 rounded-xl bg-rose-500/5 border border-rose-500/10 text-rose-400 text-xs flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+          <div className="flex items-start gap-2 rounded-xl border border-rose-500/10 bg-rose-500/5 p-3.5 text-xs text-rose-400">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{errorMessage}</span>
           </div>
         )}
 
-        {/* Form Inputs - 2 columns on mobile, 4 columns on desktop */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {/* Date */}
+        <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-emerald-500" />
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3 text-base text-white transition-all [color-scheme:dark] focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
-              required
-              id="input-shift-date"
-            />
+            <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400"><Calendar className="h-3.5 w-3.5 text-emerald-500" />Date</label>
+            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3 text-base text-white [color-scheme:dark] focus:border-emerald-500 focus:outline-none sm:text-sm" required />
           </div>
-
-          {/* Initial Balance */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Euro className="h-3.5 w-3.5 text-amber-500" />
-              Solde début
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.,]?[0-9]*"
-                placeholder="Ex. 75.00"
-                value={initialBalance}
-                onChange={(e) => setInitialBalance(e.target.value)}
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
-                required
-                id="input-shift-initial-balance"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-semibold">
-                €
-              </span>
+          <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400"><Clock3 className="h-3.5 w-3.5 text-emerald-400" />Début</label>
+              <input aria-label="Heure de début" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3 font-mono !text-[15px] text-white [color-scheme:dark] focus:border-emerald-400/50 focus:outline-none sm:text-sm" required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400"><Clock3 className="h-3.5 w-3.5 text-teal-300" />Fin</label>
+              <input aria-label="Heure de fin" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3 font-mono !text-[15px] text-white [color-scheme:dark] focus:border-teal-300/50 focus:outline-none sm:text-sm" required />
             </div>
           </div>
-
-          {/* Final Balance */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Euro className="h-3.5 w-3.5 text-emerald-500" />
-              Fin (Départ)
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.,]?[0-9]*"
-                placeholder="Ex. 220.00"
-                value={finalBalance}
-                onChange={(e) => setFinalBalance(e.target.value)}
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
-                required
-                id="input-shift-final-balance"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-semibold">
-                €
-              </span>
+          <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400"><WalletCards className="h-3.5 w-3.5 text-emerald-400" />Solde départ <span className="text-[7px] text-zinc-600">Info</span></label>
+              <div className="relative"><input aria-label="Solde de départ informatif" type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={initialBalance} onChange={(event) => setInitialBalance(event.target.value)} placeholder="0,00" className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-7 font-mono !text-[15px] text-white focus:border-emerald-400/50 focus:outline-none sm:text-sm" /><span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500">€</span></div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-gray-400"><WalletCards className="h-3.5 w-3.5 text-teal-300" />Solde fin <span className="text-[7px] text-zinc-600">Info</span></label>
+              <div className="relative"><input aria-label="Solde de fin informatif" type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" value={finalBalance} onChange={(event) => setFinalBalance(event.target.value)} placeholder="0,00" className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-7 font-mono !text-[15px] text-white focus:border-teal-300/50 focus:outline-none sm:text-sm" /><span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500">€</span></div>
             </div>
           </div>
-
-          {/* Expenses */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Euro className="h-3.5 w-3.5 text-rose-500" />
-              Frais / Carbu
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.,]?[0-9]*"
-                placeholder="Ex. 15.00"
-                value={expenses}
-                onChange={(e) => setExpenses(e.target.value)}
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
-                id="input-shift-expenses"
-              />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs font-semibold">
-                €
-              </span>
-            </div>
-          </div>
-
         </div>
 
-        <div className="rounded-xl border border-sky-500/10 bg-sky-500/[0.035] p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Banknote className="h-4 w-4 text-sky-400" />
-              <div>
-                <h3 className="text-xs font-bold text-white">Courses en espèces</h3>
-                <p className="mt-0.5 text-[9px] text-zinc-500">24 % déduits sur chaque course</p>
-              </div>
+        <div className="glass-inset rounded-[20px] p-3 sm:p-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-[13px] font-bold text-white sm:text-sm">Courses de la journée</h3>
+              <p className="mt-0.5 text-[9px] leading-relaxed text-zinc-500 sm:text-[10px]">La ligne suivante apparaît automatiquement.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setCashRides((rides) => [...rides, ""])}
-              className="flex min-h-9 items-center gap-1.5 rounded-lg border border-sky-500/15 bg-sky-500/10 px-2.5 text-[10px] font-bold text-sky-400 transition active:scale-95"
-              id="add-cash-ride-btn"
-            >
-              <Plus className="h-3.5 w-3.5" /> Ajouter
-            </button>
+            {validRides.length > 0 && (
+              <span className="shrink-0 rounded-full border border-emerald-400/15 bg-emerald-400/[0.07] px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-emerald-300">
+                {validRides.length} course{validRides.length > 1 ? "s" : ""}
+              </span>
+            )}
           </div>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {cashRides.map((ride, index) => (
-              <div key={index} className="flex items-end gap-2">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <label htmlFor={`input-cash-ride-${index}`} className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Course {index + 1}
-                  </label>
-                  <div className="relative">
-                    <input
-                      id={`input-cash-ride-${index}`}
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*[.,]?[0-9]*"
-                      placeholder="Montant"
-                      value={ride}
-                      onChange={(event) => setCashRides((rides) => rides.map((value, rideIndex) => rideIndex === index ? event.target.value : value))}
-                      className="min-h-11 w-full rounded-lg border border-white/10 bg-[#0F1115] pl-3 pr-8 font-mono text-base text-white outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 sm:text-sm"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-600">€</span>
-                  </div>
+          <div className="mt-2.5 space-y-1.5">
+            {rides.map((ride, index) => (
+              <div
+                key={index}
+                className={`group grid items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-1.5 transition-colors focus-within:border-emerald-500/40 sm:gap-2 sm:p-2 ${
+                  rides.length > 1
+                    ? "grid-cols-[minmax(0,1fr)_146px_34px] sm:grid-cols-[minmax(0,1fr)_210px_40px]"
+                    : "grid-cols-[minmax(0,1fr)_146px] sm:grid-cols-[minmax(0,1fr)_210px]"
+                }`}
+              >
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.07] bg-white/[0.04] font-mono text-[8px] font-bold text-zinc-500">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <input aria-label={`Montant de la course ${index + 1}`} type="text" inputMode="decimal" enterKeyHint="next" pattern="[0-9]*[.,]?[0-9]*" value={ride.amount} onChange={(event) => updateRide(index, { amount: event.target.value })} placeholder={ride.amount === "" && index === rides.length - 1 && validRides.length > 0 ? "Suivante..." : "Montant"} className="ride-amount-input min-h-10 w-full rounded-lg border border-white/[0.08] bg-white/[0.025] pl-9 pr-7 font-mono !text-[15px] font-semibold text-white outline-none placeholder:font-sans placeholder:text-[11px] placeholder:font-medium placeholder:text-zinc-600 focus:border-emerald-400/40 focus:bg-emerald-400/[0.025] focus:ring-2 focus:ring-emerald-400/[0.06] sm:min-h-11 sm:pl-10 sm:pr-8 sm:!text-sm" />
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-600">€</span>
                 </div>
-                {cashRides.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setCashRides((rides) => rides.filter((_, rideIndex) => rideIndex !== index))}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-[#0F1115] text-zinc-500 transition hover:text-rose-400 active:scale-95"
-                    aria-label={`Supprimer la course ${index + 1}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <div className="grid grid-cols-2 rounded-lg border border-white/[0.08] bg-black/20 p-0.5 sm:p-1">
+                  <button type="button" aria-pressed={ride.paymentMethod === "card"} onClick={() => updateRide(index, { paymentMethod: "card" })} className={`flex min-h-8 items-center justify-center gap-1 rounded-md text-[8px] font-bold transition-all sm:min-h-9 sm:gap-1.5 sm:text-[9px] ${ride.paymentMethod === "card" ? "bg-emerald-500 text-white" : "text-zinc-600 hover:text-zinc-900"}`}><CreditCard className="h-3 w-3 sm:h-3.5 sm:w-3.5" />Carte</button>
+                  <button type="button" aria-pressed={ride.paymentMethod === "cash"} onClick={() => updateRide(index, { paymentMethod: "cash" })} className={`flex min-h-8 items-center justify-center gap-1 rounded-md text-[8px] font-bold transition-all sm:min-h-9 sm:gap-1.5 sm:text-[9px] ${ride.paymentMethod === "cash" ? "bg-emerald-700 text-white" : "text-zinc-600 hover:text-zinc-900"}`}><Banknote className="h-3 w-3 sm:h-3.5 sm:w-3.5" />Espèces</button>
+                </div>
+                {rides.length > 1 && <button type="button" onClick={() => removeRide(index)} aria-label={`Supprimer la course ${index + 1}`} className="flex h-9 w-[34px] items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-zinc-600 transition hover:border-rose-400/20 hover:bg-rose-400/[0.06] hover:text-rose-400 sm:h-10 sm:w-10"><Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" /></button>}
               </div>
             ))}
           </div>
-
-          {cashGross > 0 && (
-            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-sky-500/10 pt-3 text-center">
-              <div>
-                <span className="block text-[8px] uppercase text-zinc-600">Total brut</span>
-                <strong className="mt-0.5 block font-mono text-[11px] text-zinc-300">{formatCurrency(cashGross)}</strong>
-              </div>
-              <div>
-                <span className="block text-[8px] uppercase text-zinc-600">Déduction 24 %</span>
-                <strong className="mt-0.5 block font-mono text-[11px] text-rose-400">-{formatCurrency(cashDeduction)}</strong>
-              </div>
-              <div>
-                <span className="block text-[8px] uppercase text-zinc-600">Espèces retenues</span>
-                <strong className="mt-0.5 block font-mono text-[11px] text-sky-400">{formatCurrency(cashNum)}</strong>
-              </div>
-            </div>
-          )}
         </div>
 
-        {initialBalance !== "" && (
-          <div
-            className={`rounded-xl border px-3.5 py-3 transition-colors ${
-              targetReached
-                ? "border-emerald-500/20 bg-emerald-500/[0.06]"
-                : "border-violet-500/15 bg-violet-500/[0.05]"
-            }`}
-            id="daily-target-card"
-            aria-live="polite"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className={`rounded-lg p-1.5 ${targetReached ? "bg-emerald-500/10 text-emerald-400" : "bg-violet-500/10 text-violet-400"}`}>
-                  {targetReached ? <CheckCircle2 className="h-4 w-4" /> : <Target className="h-4 w-4" />}
-                </div>
-                <div className="min-w-0">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
-                    Objectif du jour : +{DAILY_EARNINGS_TARGET} €
-                  </span>
-                  <p className="mt-0.5 truncate text-[11px] text-zinc-400">
-                    {targetReached
-                      ? "Objectif atteint"
-                      : finalBalance !== ""
-                        ? `Encore ${formatCurrency(remainingToTarget)} à réaliser`
-                        : cashNum > 0
-                          ? `Espèces après -24 % : ${formatCurrency(cashNum)}`
-                          : "Solde final à atteindre"}
-                  </p>
-                </div>
-              </div>
-              <strong className={`shrink-0 font-mono text-base font-bold ${targetReached ? "text-emerald-400" : "text-violet-300"}`}>
-                {formatCurrency(targetFinalBalance)}
-              </strong>
-            </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Summary label="Carte" value={cardTotal} color="text-emerald-300" />
+          <Summary label="Espèces brut" value={cashGross} color="text-teal-300" />
+          <Summary label="Bolt 24 %" value={-cashCommission} color="text-rose-400" />
+          <Summary label="Total" value={netEarnings} color="text-emerald-400" />
+        </div>
 
-            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
-              <div
-                className={`h-full rounded-full transition-[width] duration-300 ${targetReached ? "bg-emerald-400" : "bg-violet-400"}`}
-                style={{ width: `${targetProgress}%` }}
-              />
-            </div>
+        {validRides.length > 0 && (
+          <div className={`rounded-xl border px-3.5 py-3 ${targetReached ? "border-emerald-400/25 bg-emerald-400/[0.08]" : "border-teal-400/20 bg-teal-400/[0.06]"}`}>
+            <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-xs text-zinc-400">{targetReached ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Target className="h-4 w-4 text-teal-300" />}Objectif brut : {formatCurrency(DAILY_EARNINGS_TARGET)}</div><strong className="font-mono text-sm text-white">{formatCurrency(grossEarnings)}</strong></div>
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30"><div className={`h-full rounded-full ${targetReached ? "bg-emerald-400" : "bg-teal-400"}`} style={{ width: `${targetProgress}%` }} /></div>
           </div>
         )}
 
-        {/* Notes */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            Notes / Observations (Optionnel)
-          </label>
-          <input
-            type="text"
-            placeholder="Ex. Conditions fluides, bonus Bolt de la journée..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3.5 text-base text-white transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 sm:text-sm"
-            id="input-shift-notes"
-          />
-        </div>
+        <input type="text" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes / observations (optionnel)" className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0F1115] px-3.5 text-base text-white focus:border-emerald-500 focus:outline-none sm:text-sm" />
 
-        {/* Compact live result */}
-        <div className="pt-1 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1 flex items-center justify-between rounded-xl bg-[#0F1115] border border-white/5 px-4 py-3">
-            <div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
-                Gain {expNum > 0 ? "net" : "brut"}
-              </span>
-              {expNum > 0 && (
-                <span className="text-[10px] text-gray-500">Frais déduits : {formatCurrency(expNum)}</span>
-              )}
-              {cashNum > 0 && (
-                <span className="block text-[10px] text-sky-400">Espèces retenues : {formatCurrency(cashNum)} (-24 %)</span>
-              )}
-            </div>
-            <strong className={`text-lg font-mono ${expNum > 0 ? "text-emerald-400" : "text-amber-400"}`}>
-              {formatCurrency(expNum > 0 ? calculatedNet : calculatedGross)}
-            </strong>
-          </div>
-
-          <button
-            type="submit"
-            className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
-              editingEntry
-                ? "bg-amber-500 hover:bg-amber-400 text-[#0F1115] shadow-amber-500/10 active:scale-95"
-                : "bg-emerald-500 hover:bg-emerald-400 text-[#0F1115] shadow-lg shadow-emerald-500/10 active:scale-95"
-            }`}
-            id="save-shift-submit-btn"
-          >
-            <Save className="h-4 w-4" />
-            <span>{editingEntry ? "Mettre à jour" : "Enregistrer"}</span>
-          </button>
-        </div>
+        <button type="submit" className={`primary-action flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white ${editingEntry ? "is-editing" : ""}`}><Save className="h-4 w-4" />{editingEntry ? "Mettre à jour" : "Enregistrer la journée"}</button>
       </form>
     </div>
   );
 };
+
+const Summary = ({ label, value, color, wide = false }: { label: string; value: number; color: string; wide?: boolean }) => (
+  <div className={`rounded-xl border border-white/5 bg-[#0F1115] p-3 ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
+    <span className="block text-[8px] font-bold uppercase tracking-wide text-zinc-600">{label}</span>
+    <strong className={`mt-1 block truncate font-mono text-xs ${color}`}>{new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value)}</strong>
+  </div>
+);

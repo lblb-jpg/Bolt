@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, Fuel, ReceiptText, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { ChevronDown, ReceiptText, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { getCompletedWeeklySettlements } from "../earnings";
 import { ShiftEntry } from "../types";
 
@@ -33,7 +33,7 @@ export const WeeklyAccountSettlement = ({ entries }: WeeklyAccountSettlementProp
 
   return (
     <section aria-labelledby="weekly-account-title" className="pt-1">
-      <div className="overflow-hidden rounded-xl border border-white/[0.04] bg-[#14171C]">
+      <div className="glass-card overflow-hidden rounded-[22px]">
         <button
           type="button"
           onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -78,25 +78,19 @@ export const WeeklyAccountSettlement = ({ entries }: WeeklyAccountSettlementProp
                       {week.daysWorked} jour{week.daysWorked > 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div>
                     <div className="rounded-lg bg-white/[0.025] p-2.5">
                       <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-zinc-600">
                         <WalletCards className="h-3 w-3 text-emerald-500" /> Gains bruts
                       </div>
                       <strong className="mt-1 block font-mono text-xs text-zinc-300">{formatCurrency(week.totalGross)}</strong>
                       {week.totalCash > 0 && (
-                        <span className="mt-0.5 block text-[8px] text-sky-400">dont {formatCurrency(week.totalCash)} après -24 %</span>
+                        <span className="mt-0.5 block text-[8px] text-teal-300">dont {formatCurrency(week.totalCash)} après -24 %</span>
                       )}
-                    </div>
-                    <div className="rounded-lg bg-white/[0.025] p-2.5">
-                      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-zinc-600">
-                        <Fuel className="h-3 w-3 text-rose-500" /> Carburant
-                      </div>
-                      <strong className="mt-1 block font-mono text-xs text-rose-400">-{formatCurrency(week.totalExpenses)}</strong>
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-[10px]">
-                    <span className="text-zinc-600">Gain après carburant</span>
+                    <span className="text-zinc-600">Total des gains</span>
                     <span className="font-mono text-zinc-400">{formatCurrency(week.totalNetBeforeFee)}</span>
                     <span className="text-zinc-600">Frais de compte</span>
                     <span className="font-mono text-orange-400">-{formatCurrency(week.fee)}</span>

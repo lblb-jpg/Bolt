@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TrendingUp, Fuel, CalendarDays, Trophy, WalletCards, ChevronDown, Banknote } from "lucide-react";
+import { TrendingUp, CalendarDays, Trophy, WalletCards, ChevronDown, Banknote, CreditCard } from "lucide-react";
 import { EarningsStats } from "../types";
 
 interface DashboardStatsProps {
@@ -24,34 +24,29 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
 
   const secondaryStats = [
     {
-      title: "Gains bruts",
+      title: "Total après Bolt",
       value: formatCurrency(stats.totalGross),
       icon: WalletCards,
       color: "text-amber-400",
     },
     {
-      title: "Espèces après -24 %",
-      value: formatCurrency(stats.totalCash),
+      title: "Espèces avant déduction",
+      value: formatCurrency(stats.totalCashGross),
+      subvalue: `Après -24 % : ${formatCurrency(stats.totalCash)}`,
       icon: Banknote,
-      color: "text-sky-400",
-    },
-    {
-      title: "Frais totaux",
-      value: formatCurrency(stats.totalExpenses),
-      icon: Fuel,
-      color: "text-rose-400",
+      color: "text-teal-300",
     },
     {
       title: "Jours travaillés",
       value: stats.daysCount.toString(),
       icon: CalendarDays,
-      color: "text-violet-400",
+      color: "text-teal-300",
     },
     {
       title: "Moyenne / jour",
       value: formatCurrency(stats.averageNetPerDay),
       icon: TrendingUp,
-      color: "text-sky-400",
+      color: "text-teal-300",
     },
     {
       title: "Meilleure journée",
@@ -65,7 +60,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
   ];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#16191F] transition-colors hover:border-white/10">
+    <div className="glass-card glass-card--cyan h-full overflow-hidden rounded-[26px] transition-transform">
       <button
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -75,7 +70,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
         id="monthly-summary-toggle"
       >
         <div className="flex min-w-0 items-center gap-3">
-          <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/5 p-2 text-emerald-400">
+          <div className="icon-well icon-well--cyan rounded-[14px] p-2.5 text-emerald-200">
             <WalletCards className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -87,11 +82,14 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
         </div>
 
         <div className="flex shrink-0 items-center gap-2.5">
-          <div className="text-right">
-            <span className="block text-[8px] font-bold uppercase tracking-wider text-zinc-600">Gains nets</span>
-            <strong className="block font-mono text-sm font-bold text-emerald-400 sm:text-base">
+          <div className="monthly-total text-right">
+            <span className="monthly-total__label">Total du mois</span>
+            <strong className="monthly-total__value">
               {formatCurrency(stats.totalNet)}
             </strong>
+            <span className="monthly-total__card">
+              <CreditCard className="h-2.5 w-2.5" /> Carte {formatCurrency(Math.max(0, stats.totalGross - stats.totalCash))}
+            </span>
           </div>
           <ChevronDown
             className={`h-4 w-4 text-zinc-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
@@ -107,13 +105,13 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
         }`}
       >
         <div className="overflow-hidden">
-          <div className="grid grid-cols-2 gap-2.5 border-t border-white/5 p-3.5 sm:p-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5 border-t border-white/10 p-3.5 sm:p-4 lg:grid-cols-3">
             {secondaryStats.map((card) => {
               const Icon = card.icon;
               return (
                 <div
                   key={card.title}
-                  className="min-w-0 rounded-xl border border-white/5 bg-[#0F1115]/70 p-3"
+                  className="glass-inset min-w-0 rounded-2xl p-3"
                 >
                   <div className="flex items-center gap-1.5">
                     <Icon className={`h-3.5 w-3.5 shrink-0 ${card.color}`} />
@@ -125,6 +123,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats, monthLabe
                     <strong className="truncate font-mono text-sm font-bold text-white sm:text-base">{card.value}</strong>
                     {card.detail && <span className="shrink-0 text-[9px] text-zinc-600">{card.detail}</span>}
                   </div>
+                  {card.subvalue && (
+                    <span className="mt-1 block text-[9px] font-semibold text-teal-500">{card.subvalue}</span>
+                  )}
                 </div>
               );
             })}

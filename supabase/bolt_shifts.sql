@@ -8,6 +8,7 @@ create table if not exists public.bolt_shifts (
   initial_balance numeric(12, 2) not null default 0,
   final_balance numeric(12, 2) not null default 0,
   cash_rides numeric(12, 2)[] not null default '{}',
+  rides jsonb not null default '[]'::jsonb,
   cash_earnings numeric(12, 2) not null default 0,
   gross_earnings numeric(12, 2) not null default 0,
   expenses numeric(12, 2) not null default 0,
@@ -20,6 +21,7 @@ create table if not exists public.bolt_shifts (
 alter table public.bolt_shifts
   add column if not exists cash_earnings numeric(12, 2) not null default 0,
   add column if not exists cash_rides numeric(12, 2)[] not null default '{}',
+  add column if not exists rides jsonb not null default '[]'::jsonb,
   add column if not exists profile_id text not null default 'principal';
 
 create index if not exists bolt_shifts_profile_date_idx

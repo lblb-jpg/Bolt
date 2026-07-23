@@ -83,7 +83,7 @@ export const EarningsChart: React.FC<EarningsChartProps> = ({ entries }) => {
   });
 
   return (
-    <div className="bg-[#16191F] border border-white/5 rounded-2xl p-5 shadow-xl shadow-black/10 backdrop-blur-sm">
+    <div className="glass-card rounded-2xl p-5">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-lg bg-emerald-500/5 text-emerald-400 border border-emerald-500/10">
